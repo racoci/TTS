@@ -116,5 +116,13 @@ venv.bak/
 *.pth.tar
 result/
 
+# setup.py
+version.py
+
 # jupyter dummy files
 core
+
+tests/outputs/*
+TODO.txt
+.vscode/*
+data/*
