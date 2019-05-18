@@ -3,7 +3,7 @@ import time
 import librosa
 import torch
 import numpy as np
-from .text import text_to_sequence, phoneme_to_sequence,
+from .text import text_to_sequence, phoneme_to_sequence
 from .visual import visualize
 from matplotlib import pylab as plt
 
