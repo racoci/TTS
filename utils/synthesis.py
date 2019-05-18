@@ -3,7 +3,7 @@ import time
 import librosa
 import torch
 import numpy as np
-from .text import text_to_sequence, phoneme_to_sequence
+from .text import text_to_sequence, phoneme_to_sequence,
 from .visual import visualize
 from matplotlib import pylab as plt
 
@@ -17,6 +17,8 @@ def synthesis(m, s, CONFIG, use_cuda, ap):
         seq = np.asarray(
             phoneme_to_sequence(s, text_cleaner, CONFIG.phoneme_language),
             dtype=np.int32)
+
+        print('Phoneme to seq:',sequence_to_phoneme(seq))
     else:
         seq = np.asarray(text_to_sequence(s, text_cleaner), dtype=np.int32)
     chars_var = torch.from_numpy(seq).unsqueeze(0)

@@ -48,7 +48,7 @@ def phoneme_to_sequence(text, cleaner_names, language):
         print("!! After phoneme conversion the result is None. -- {} ".format(clean_text))
     for phoneme in phonemes.split('|'):
         sequence += _phoneme_to_sequence(phoneme)
-    #print(clean_text, ' -- ', phonemes.replace('|', ''))
+    print(clean_text, ' --> ', phonemes.replace('|', ''))
     # Append EOS char
     sequence.append(_phonemes_to_id['&'])
     return sequence
