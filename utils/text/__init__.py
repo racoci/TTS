@@ -49,6 +49,8 @@ def phoneme_to_sequence(text, cleaner_names, language):
     for phoneme in phonemes.split('|'):
         sequence += _phoneme_to_sequence(phoneme)
     print(clean_text, ' --> ', phonemes.replace('|', ''))
+    
+    sequence.append(_symbol_to_id['*'])
     # Append EOS char
     sequence.append(_phonemes_to_id['&'])
     return sequence
@@ -90,6 +92,8 @@ def text_to_sequence(text, cleaner_names):
         sequence += _arpabet_to_sequence(m.group(2))
         text = m.group(3)
 
+   
+    sequence.append(_symbol_to_id['*'])
     # Append EOS token
     sequence.append(_symbol_to_id['&'])
     return sequence
@@ -130,8 +134,8 @@ def _arpabet_to_sequence(text):
 
 
 def _should_keep_symbol(s):
-    return s in _symbol_to_id and s is not '_' and s is not '&'
+    return s in _symbol_to_id and s is not '_' and s is not '&' and s is not '*'
 
 
 def _should_keep_phoneme(p):
-    return p in _phonemes_to_id and p is not '_' and p is not '&'
+    return p in _phonemes_to_id and p is not '_' and p is not '&' and p is not '*'

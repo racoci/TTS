@@ -11,7 +11,7 @@ _pad = '_'
 _eos = '&'
 _characters = 'ABCDEFGHIJKLMçãàáâêéíóôõúûabcdefghijklmnopqrstuvwxyz!\'(),-.:;? '
 #_characters ='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz!\'(),-.:;? '# english vocab
-_punctuations = '!\'(),-.:;? '
+_punctuations = '!*(),-.:;? '#*
 _phoneme_punctuations = '.!;:,?'
 
 # Phonemes definition
