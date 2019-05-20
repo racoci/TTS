@@ -35,7 +35,7 @@
     "windowing": false,      // Enables attention windowing. Used only in eval mode.
     "memory_size": 5,       // memory queue size used to queue network predictions to feed autoregressive connection. Useful if r < 5. 
 
-    "batch_size": 15,       // Batch size for training. Lower values than 32 might cause hard to learn attention.
+    "batch_size": 10,       // Batch size for training. Lower values than 32 might cause hard to learn attention.
     "eval_batch_size":15,   
     "r": 2,                 // Number of frames to predict for step.
     "wd": 0.00001,         // Weight decay weight.
