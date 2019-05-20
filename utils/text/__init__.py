@@ -50,7 +50,7 @@ def phoneme_to_sequence(text, cleaner_names, language):
         sequence += _phoneme_to_sequence(phoneme)
     print(clean_text, ' --> ', phonemes.replace('|', ''))
     
-    #sequence.append(_symbol_to_id['*'])
+    sequence.append(_phonemes_to_id['*'])
     # Append EOS char
     sequence.append(_phonemes_to_id['&'])
     return sequence
@@ -93,7 +93,7 @@ def text_to_sequence(text, cleaner_names):
         text = m.group(3)
 
    
-    #sequence.append(_symbol_to_id['*'])
+    sequence.append(_symbol_to_id['*'])
     # Append EOS token
     sequence.append(_symbol_to_id['&'])
     return sequence

@@ -9,7 +9,7 @@ from utils.text import cmudict
 
 _pad = '_'
 _eos = '&'
-_characters = 'ABCDEFGHIJKLMçãàáâêéíóôõúûabcdefghijklmnopqrstuvwxyz!\'(),-.:;? '
+_characters = 'ABCDEFGHIJKLMçãàáâêéíóôõúûabcdefghijklmnopqrstuvwxyz!\'(),-.:;?* '
 #_characters ='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz!\'(),-.:;? '# english vocab
 _punctuations = '!*(),-.:;? '#*
 _phoneme_punctuations = '.!;:,?'
