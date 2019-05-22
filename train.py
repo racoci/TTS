@@ -243,12 +243,26 @@ def evaluate(model, criterion, criterion_st, ap, current_step):
     avg_mel_loss = 0
     avg_stop_loss = 0
     print(" | > Validation")
-    test_sentences = [
-        "It took me quite a long time to develop a voice, and now that I have it I'm not going to be silent.",
-        "Be a voice, not an echo.",
-        "I'm sorry Dave. I'm afraid I can't do that.",
-        "This cake is great. It's so delicious and moist."
-    ]
+    test_sentences = ["A inauguração da vila é quarta ou quinta-feira",
+        "Vote se você tiver o título de eleitor",
+        "Hoje é fundamental encontrar a razão da existência humana",
+        "A temperatura é mais amena à noite",
+        "Em muitas cidades a população está diminuindo.",
+        "Nunca se deve ficar em cima do morro",
+        "Para as pessoas estranhas o panorama é desolador",
+        "É bom te ver colhendo flores menino",
+        "Eu finjo me banhar num lago ao amanhecer",
+        "Sua sensibilidade mostrará o caminho",
+        "A Amazônia é a reserva ecológica do globo",
+        "O ministério mudou demais com a eleição",
+        "Novas metas surgem na informática",
+        "O capital de uma empresa depende de sua produção",
+        "Se não fosse ela tudo teria sido melhor",
+        "A principal personagem no filme é uma gueixa",
+        "Espere seu amigo em casa",
+        "A juventude tinha que revolucionar a escola",
+        " A cantora terá quatro meses para ensaiar seu canto",
+        "Esse tema foi falado no congresso."]
     n_priority_freq = int(
         3000 / (c.audio['sample_rate'] * 0.5) * c.audio['num_freq'])
     with torch.no_grad():
