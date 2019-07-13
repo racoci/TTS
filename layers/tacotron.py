@@ -451,14 +451,14 @@ class Decoder(nn.Module):
             t += 1
             if memory is not None:
                 if t >= T_decoder:
-                    print("t >= T_decoder")
+                    print("   | > Decoder stopped with t >= T_decoder")
                     break
             else:
-                '''if t > inputs.shape[1] / 4 and (stop_token > 0.6 or
+                if t > inputs.shape[1] / 4 and (stop_token > 0.6 or
                                                 attention[:, -1].item() > 0.6):
-                    print("Decoder stopped with Stop Token Loss")
-                    break'''
-                if t > self.max_decoder_steps:
+                    print("   | >Decoder stopped with Stop Token Loss")
+                    break
+                elif t > self.max_decoder_steps:
                     print("   | > Decoder stopped with 'max_decoder_steps")
                     break
         # Back to batch first
