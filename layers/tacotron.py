@@ -451,7 +451,7 @@ class Decoder(nn.Module):
             t += 1
             if memory is not None:
                 if t >= T_decoder:
-                    print("   | > Decoder stopped with t >= T_decoder")
+                    #print("   | > Decoder stopped with t >= T_decoder")
                     break
             else:
                 if t > inputs.shape[1] / 4 and (stop_token > 0.6 or
