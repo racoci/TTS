@@ -20,9 +20,9 @@
         "symmetric_norm": false, // move normalization to range [-1, 1]
         "max_norm": 1,          // scale normalization to range [-max_norm, max_norm] or [0, max_norm]
         "clip_norm": true,      // clip normalized values into the range.
-        "mel_fmin": null,         // minimum freq level for mel-spec. ~50 for male and ~95 for female voices. Tune for dataset!!
-        "mel_fmax": null,        // maximum freq level for mel-spec. Tune for dataset!!
-        "do_trim_silence": true  // enable trimming of slience of audio as you load it. LJspeech (false), TWEB (false), Nancy (true)
+        "mel_fmin": 0.0,      // minimum freq level for mel-spec. ~50 for male and ~95 for female voices. Tune for dataset!!
+        "mel_fmax": 8000.0,        // maximum freq level for mel-spec. Tune for dataset!!
+        "do_trim_silence": false  // enable trimming of slience of audio as you load it. LJspeech (false), TWEB (false), Nancy (true)
     },
 
     "embedding_size": 256,  // Character embedding vector length. You don't need to change it in general.
