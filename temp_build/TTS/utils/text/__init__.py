@@ -49,11 +49,10 @@ def text2phone(text, language):
 def pad_with_eos_bos(phoneme_sequence, tp=None):
     global _PHONEMES_TO_ID, _bos, _eos
     if tp:
+        _, phonemes = make_symbols(**tp)
         _bos = tp['bos']
         _eos = tp['eos']
-        _, phonemes = make_symbols(**tp)
         _PHONEMES_TO_ID = {s: i for i, s in enumerate(phonemes)}
-        
     return [_PHONEMES_TO_ID[_bos]] + list(phoneme_sequence) + [_PHONEMES_TO_ID[_eos]]
 
 
