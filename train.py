@@ -25,7 +25,7 @@ from TTS.utils.logger import Logger
 from TTS.utils.speakers import load_speaker_mapping, save_speaker_mapping, \
     get_speakers
 from TTS.utils.synthesis import synthesis
-from TTS.utils.text.symbols import phonemes, symbols
+from TTS.utils.text.symbols import make_symbols, phonemes, symbols
 from TTS.utils.visual import plot_alignment, plot_spectrogram
 from TTS.datasets.preprocess import load_meta_data
 from TTS.utils.radam import RAdam
@@ -688,6 +688,9 @@ if __name__ == '__main__':
     # setup output paths and read configs
     c = load_config(args.config_path)
     _ = os.path.dirname(os.path.realpath(__file__))
+
+    if c['text']:
+        print(c['text'])
 
     OUT_PATH = args.continue_path
     if args.continue_path == '':
