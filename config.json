@@ -25,6 +25,16 @@
         "mel_fmax": 8000.0,        // maximum freq level for mel-spec. Tune for dataset!!
         "do_trim_silence": true  // enable trimming of slience of audio as you load it. LJspeech (false), TWEB (false), Nancy (true)
     },
+    
+    // VOCABULARY PARAMETERS
+    "text":{
+        "pad": "_",
+        "eos": "~",
+        "bos": "^",
+        "characters": "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz!'(),-.:;? ",//
+        "punctuations":"!'(),-.:;? ",// 
+        "phonemes":"iyɨʉɯuɪʏʊeøɘəɵɤoɛœɜɞʌɔæɐaɶɑɒᵻʘɓǀɗǃʄǂɠǁʛpbtdʈɖcɟkɡqɢʔɴŋɲɳnɱmʙrʀⱱɾɽɸβfvθðszʃʒʂʐçʝxɣχʁħʕhɦɬɮʋɹɻjɰlɭʎʟˈˌːˑʍwɥʜʢʡɕʑɺɧɚ˞ɫ"//
+    },
 
     // DISTRIBUTED TRAINING
     "distributed":{
