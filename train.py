@@ -519,15 +519,25 @@ def main(args):  # pylint: disable=redefined-outer-name
     global meta_data_train, meta_data_eval, symbols, phonemes
     # Audio processor
     ap = AudioProcessor(**c.audio)
-
+    print(" > TTS symbols {}".format(len(symbols)))
+    print(symbols)
+    print(" > TTS phonemes {}".format(len(phonemes)))
+    print(phonemes)
+    print('-'*50)
     # if the vocabulary was passed, replace the default
     if 'text' in c.keys():
         symbols, phonemes =  make_symbols(**c.text)
-        
+
+    print(" > TTS symbols {}".format(len(symbols)))
+    print(symbols)
+    print(" > TTS phonemes {}".format(len(phonemes)))
+    print(phonemes)
+
     # DISTRUBUTED
     if num_gpus > 1:
         init_distributed(args.rank, num_gpus, args.group_id,
                          c.distributed["backend"], c.distributed["url"])
+
     num_chars = len(phonemes) if c.use_phonemes else len(symbols)
 
     # load data instances
@@ -551,7 +561,7 @@ def main(args):  # pylint: disable=redefined-outer-name
                                                      ", ".join(speakers)))
     else:
         num_speakers = 0
-
+    print(" | > Num chars : {}".format(num_chars))
     model = setup_model(num_chars, num_speakers, c)
 
     print(" | > Num output units : {}".format(ap.num_freq), flush=True)

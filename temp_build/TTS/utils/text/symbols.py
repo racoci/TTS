@@ -5,7 +5,6 @@ Defines the set of symbols used in text input to the model.
 The default is a set of ASCII characters that works well for English or text that has been run
 through Unidecode. For other data, you can modify _characters. See TRAINING_DATA.md for details.
 '''
-
 def make_symbols(characters, phonemes, punctuations='!\'(),-.:;? ', pad='_', eos='~', bos='^'):
     ''' Function to create symbols and phonemes '''
     _phonemes = sorted(list(phonemes))
@@ -14,10 +13,10 @@ def make_symbols(characters, phonemes, punctuations='!\'(),-.:;? ', pad='_', eos
     _arpabet = ['@' + s for s in _phonemes]
 
     # Export all symbols:
-    _symbols = [pad, eos, bos] + list(characters) + _arpabet
-    _phonemes = [pad, eos, bos] + list(phonemes) + list(punctuations)
+    symbols = [pad, eos, bos] + list(characters) + _arpabet
+    phonemes = [pad, eos, bos] + list(_phonemes) + list(punctuations)
 
-    return _symbols, _phonemes
+    return symbols, phonemes
 
 _pad = '_'
 _eos = '~'
