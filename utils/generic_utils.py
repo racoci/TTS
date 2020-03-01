@@ -427,12 +427,12 @@ def check_config(c):
 
     # vocabulary parameters
     _check_argument('text', c, restricted=False, val_type=dict)
-    _check_argument('pad', c['text'], restricted=True, val_type=str)
-    _check_argument('eos', c['text'], restricted=True, val_type=str)
-    _check_argument('bos', c['text'], restricted=True, val_type=str)
-    _check_argument('characters', c['text'], restricted=True, val_type=str)    
-    _check_argument('phonemes', c['text'], restricted=True, val_type=str)
-    _check_argument('punctuations', c['text'], restricted=True, val_type=str)
+    _check_argument('pad', c['text'], restricted=False, val_type=str)
+    _check_argument('eos', c['text'], restricted=False, val_type=str)
+    _check_argument('bos', c['text'], restricted=False, val_type=str)
+    _check_argument('characters', c['text'], restricted=False, val_type=str)    
+    _check_argument('phonemes', c['text'], restricted=False, val_type=str)
+    _check_argument('punctuations', c['text'], restricted=False, val_type=str)
 
     # normalization parameters
     _check_argument('signal_norm', c['audio'], restricted=True, val_type=bool)
