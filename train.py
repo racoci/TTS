@@ -13,7 +13,7 @@ from torch.utils.data import DataLoader
 from TTS.datasets.TTSDataset import MyDataset
 from distribute import (DistributedSampler, apply_gradient_allreduce,
                         init_distributed, reduce_tensor)
-from TTS.layers.losses import L1LossMasked, MSELossMasked
+from TTS.layers.losses import L1LossMasked, MSELossMasked, BCELossMasked
 from TTS.utils.audio import AudioProcessor
 from TTS.utils.generic_utils import (
     NoamLR, check_update, count_parameters, create_experiment_folder,
@@ -23,7 +23,7 @@ from TTS.utils.generic_utils import (
     set_weight_decay, check_config)
 from TTS.utils.logger import Logger
 from TTS.utils.speakers import load_speaker_mapping, save_speaker_mapping, \
-    get_speakers
+    get_speakers, get_speakers_embedding, get_speakers_id
 from TTS.utils.synthesis import synthesis
 from TTS.utils.text.symbols import make_symbols, phonemes, symbols
 from TTS.utils.visual import plot_alignment, plot_spectrogram
@@ -89,9 +89,7 @@ def format_data(data):
     avg_spec_length = torch.mean(mel_lengths.float())
 
     if c.use_speaker_embedding:
-        speaker_ids = [
-            speaker_mapping[speaker_name] for speaker_name in speaker_names
-        ]
+        speaker_ids = get_speakers_id(speaker_mapping,speaker_names)
         speaker_ids = torch.LongTensor(speaker_ids)
     else:
         speaker_ids = None
@@ -168,7 +166,7 @@ def train(model, criterion, criterion_st, optimizer, optimizer_st, scheduler,
 
         # loss computation
         stop_loss = criterion_st(stop_tokens,
-                                 stop_targets) if c.stopnet else torch.zeros(1)
+                                 stop_targets, mel_lengths) if c.stopnet else torch.zeros(1)
         if c.loss_masking:
             decoder_loss = criterion(decoder_output, mel_input, mel_lengths)
             if c.model in ["Tacotron", "TacotronGST"]:
@@ -366,7 +364,7 @@ def evaluate(model, criterion, criterion_st, ap, global_step, epoch):
 
             # loss computation
             stop_loss = criterion_st(
-                stop_tokens, stop_targets) if c.stopnet else torch.zeros(1)
+                stop_tokens, stop_targets, mel_lengths) if c.stopnet else torch.zeros(1)
             if c.loss_masking:
                 decoder_loss = criterion(decoder_output, mel_input,
                                          mel_lengths)
@@ -494,7 +492,12 @@ def evaluate(model, criterion, criterion_st, ap, global_step, epoch):
                     use_cuda,
                     ap,
                     speaker_id=speaker_id,
-                    style_wav=style_wav)
+                    style_wav=style_wav,
+                    truncated=False,
+                    enable_eos_bos_chars=c.enable_eos_bos_chars, #pylint: disable=unused-argument
+                    use_griffin_lim=True,
+                    do_trim_silence=False)
+
                 file_path = os.path.join(AUDIO_PATH, str(global_step))
                 os.makedirs(file_path, exist_ok=True)
                 file_path = os.path.join(file_path,
@@ -532,6 +535,9 @@ def main(args):  # pylint: disable=redefined-outer-name
     # load data instances
     meta_data_train, meta_data_eval = load_meta_data(c.datasets)
 
+    speaker_embedding_dim = None
+    speaker_embedding_weights = None 
+
     # parse speakers
     if c.use_speaker_embedding:
         speakers = get_speakers(meta_data_train)
@@ -542,16 +548,33 @@ def main(args):  # pylint: disable=redefined-outer-name
                         for speaker in speakers]), "As of now you, you cannot " \
                                                    "introduce new speakers to " \
                                                    "a previously trained model."
+        elif c.speaker_embedding_file:
+            speaker_mapping = load_speaker_mapping(c.speaker_embedding_file)
+            assert all([speaker in speaker_mapping
+                        for speaker in speakers]), "In the datasets there are " \
+                                                   "speakers who are not present " \
+                                                   "in speaker_mapping (speakers.json)."
         else:
-            speaker_mapping = {name: i for i, name in enumerate(speakers)}
+            speaker_mapping = {name: {'id': i, 'embedding':None} for i, name in enumerate(speakers)}
+            
+            
         save_speaker_mapping(OUT_PATH, speaker_mapping)
         num_speakers = len(speaker_mapping)
+
+        if isinstance(speaker_mapping[speakers[0]],dict):
+            print('entrou aqui', speaker_mapping[speakers[0]]['embedding'])
+            speaker_embedding_weights = get_speakers_embedding(speaker_mapping) if speaker_mapping[speakers[0]]['embedding'] is not None else None
+            speaker_embedding_dim = len(speaker_mapping[speakers[0]]['embedding']) if speaker_mapping[speakers[0]]['embedding'] is not None else 256
+        else: # its necessary for old version compatibility
+            speaker_embedding_weights = None
+            speaker_embedding_dim = 256
+
         print("Training with {} speakers: {}".format(num_speakers,
                                                      ", ".join(speakers)))
     else:
         num_speakers = 0
 
-    model = setup_model(num_chars, num_speakers, c)
+    model = setup_model(num_chars, num_speakers, c, speaker_embedding_dim, speaker_embedding_weights)
 
     print(" | > Num output units : {}".format(ap.num_freq), flush=True)
 
@@ -570,7 +593,7 @@ def main(args):  # pylint: disable=redefined-outer-name
     else:
         criterion = nn.L1Loss() if c.model in ["Tacotron", "TacotronGST"
                                                ] else nn.MSELoss()
-    criterion_st = nn.BCEWithLogitsLoss(
+    criterion_st = BCELossMasked(
         pos_weight=torch.tensor(10)) if c.stopnet else None
 
     if args.restore_path:
