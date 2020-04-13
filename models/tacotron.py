@@ -13,7 +13,6 @@ class Tacotron(nn.Module):
                  num_chars,
                  num_speakers,
                  speaker_embedding_dim=256,
-                 speaker_embedding_weights=None,
                  r=5,
                  postnet_output_dim=1025,
                  decoder_output_dim=80,
@@ -58,12 +57,6 @@ class Tacotron(nn.Module):
                                      postnet_output_dim)
         # speaker embedding layers
         if num_speakers > 1:
-            if speaker_embedding_weights:
-                self.speaker_embedding= nn.Embedding.from_pretrained(torch.FloatTensor(speaker_embedding_weights))
-            else:
-                self.speaker_embedding = nn.Embedding(num_speakers, speaker_embedding_dim)
-                self.speaker_embedding.weight.data.normal_(0, 0.3)
-
             self.speaker_project_mel = nn.Sequential(
                 nn.Linear(speaker_embedding_dim, proj_speaker_dim), nn.Tanh())
             self.speaker_embeddings = None
@@ -96,32 +89,34 @@ class Tacotron(nn.Module):
         inputs = self._add_speaker_embedding(inputs, gst_outputs)
         return inputs
 
-    def forward(self, characters, text_lengths, mel_specs, speaker_ids=None):
+    def forward(self, characters, text_lengths, mel_specs, speaker_embeddings=None):
         """
         Shapes:
             - characters: B x T_in
             - text_lengths: B
             - mel_specs: B x T_out x D
-            - speaker_ids: B x 1
+            - speaker_embeddings: B x speaker_embedding_dim
         """
         self._init_states()
         mask = sequence_mask(text_lengths).to(characters.device)
         # B x T_in x embed_dim
         inputs = self.embedding(characters)
         # B x speaker_embed_dim
-        self.compute_speaker_embedding(speaker_ids)
-        if self.num_speakers > 1:
+        #self.compute_speaker_embedding(speaker_ids)
+        if speaker_embeddings is not None:
             # B x T_in x embed_dim + speaker_embed_dim
             inputs = self._concat_speaker_embedding(inputs,
-                                                    self.speaker_embeddings)
+                                                    speaker_embeddings)
         # B x T_in x encoder_dim
         encoder_outputs = self.encoder(inputs)
         if self.gst:
             # B x gst_dim
             encoder_outputs = self.compute_gst(encoder_outputs, mel_specs)
-        if self.num_speakers > 1:
+        if speaker_embeddings is not None:
             encoder_outputs = self._concat_speaker_embedding(
-                encoder_outputs, self.speaker_embeddings)
+                encoder_outputs, speaker_embeddings)
+            self.speaker_embeddings_projected = self.speaker_project_mel(
+                speaker_embeddings).squeeze(1)
         # decoder_outputs: B x decoder_dim x T_out
         # alignments: B x T_in x encoder_dim
         # stop_tokens: B x T_in
@@ -140,19 +135,22 @@ class Tacotron(nn.Module):
         return decoder_outputs, postnet_outputs, alignments, stop_tokens
 
     @torch.no_grad()
-    def inference(self, characters, speaker_ids=None, style_mel=None):
+    def inference(self, characters, speaker_embeddings=None, style_mel=None):
         inputs = self.embedding(characters)
         self._init_states()
-        self.compute_speaker_embedding(speaker_ids)
-        if self.num_speakers > 1:
+        #self.compute_speaker_embedding(speaker_ids)
+        if speaker_embeddings is not None:
             inputs = self._concat_speaker_embedding(inputs,
-                                                    self.speaker_embeddings)
+                                                    speaker_embeddings)
         encoder_outputs = self.encoder(inputs)
         if self.gst and style_mel is not None:
             encoder_outputs = self.compute_gst(encoder_outputs, style_mel)
-        if self.num_speakers > 1:
+        if speaker_embeddings is not None:
             encoder_outputs = self._concat_speaker_embedding(
-                encoder_outputs, self.speaker_embeddings)
+                encoder_outputs, speaker_embeddings)
+            self.speaker_embeddings_projected = self.speaker_project_mel(
+                speaker_embeddings).squeeze(1)
+            
         decoder_outputs, alignments, stop_tokens = self.decoder.inference(
             encoder_outputs, self.speaker_embeddings_projected)
         postnet_outputs = self.postnet(decoder_outputs)

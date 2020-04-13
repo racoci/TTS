@@ -82,16 +82,15 @@ def format_data(data):
     text_input = data[0]
     text_lengths = data[1]
     speaker_names = data[2]
-    linear_input = data[3] if c.model in ["Tacotron"] else None
-    mel_input = data[4]
-    mel_lengths = data[5]
-    stop_targets = data[6]
+    linear_input = data[4] if c.model in ["Tacotron"] else None
+    mel_input = data[5]
+    mel_lengths = data[6]
+    stop_targets = data[7]
     avg_text_length = torch.mean(text_lengths.float())
     avg_spec_length = torch.mean(mel_lengths.float())
 
     if c.use_speaker_embedding:
-        speaker_ids = get_speakers_id(speaker_mapping,speaker_names)
-        speaker_ids = torch.LongTensor(speaker_ids)
+        speaker_embeddings = data[3]
     else:
         speaker_ids = None
 
@@ -111,7 +110,7 @@ def format_data(data):
         stop_targets = stop_targets.cuda(non_blocking=True)
         if speaker_ids is not None:
             speaker_ids = speaker_ids.cuda(non_blocking=True)
-    return text_input, text_lengths, mel_input, mel_lengths, linear_input, stop_targets, speaker_ids, avg_text_length, avg_spec_length
+    return text_input, text_lengths, mel_input, mel_lengths, linear_input, stop_targets, speaker_embeddings, avg_text_length, avg_spec_length
 
 
 def train(model, criterion, optimizer, optimizer_st, scheduler,
@@ -147,7 +146,7 @@ def train(model, criterion, optimizer, optimizer_st, scheduler,
         start_time = time.time()
 
         # format data
-        text_input, text_lengths, mel_input, mel_lengths, linear_input, stop_targets, speaker_ids, avg_text_length, avg_spec_length = format_data(data)
+        text_input, text_lengths, mel_input, mel_lengths, linear_input, stop_targets, speaker_embeddings, avg_text_length, avg_spec_length = format_data(data)
         loader_time = time.time() - end_time
 
         global_step += 1
@@ -347,10 +346,10 @@ def evaluate(model, criterion, ap, global_step, epoch):
             # forward pass model
             if c.bidirectional_decoder:
                 decoder_output, postnet_output, alignments, stop_tokens, decoder_backward_output, alignments_backward = model(
-                    text_input, text_lengths, mel_input, speaker_ids=speaker_ids)
+                    text_input, text_lengths, mel_input, speaker_embeddings=speaker_embeddings)
             else:
                 decoder_output, postnet_output, alignments, stop_tokens = model(
-                    text_input, text_lengths, mel_input, speaker_ids=speaker_ids)
+                    text_input, text_lengths, mel_input, speaker_embeddings=speaker_embeddings)
                 decoder_backward_output = None
 
             # set the alignment lengths wrt reduction factor for guided attention
@@ -525,40 +524,21 @@ def main(args):  # pylint: disable=redefined-outer-name
 
     # parse speakers
     if c.use_speaker_embedding:
-        speakers = get_speakers(meta_data_train)
         if args.restore_path:
             prev_out_path = os.path.dirname(args.restore_path)
             speaker_mapping = load_speaker_mapping(prev_out_path)
-            assert all([speaker in speaker_mapping
-                        for speaker in speakers]), "As of now you, you cannot " \
-                                                   "introduce new speakers to " \
-                                                   "a previously trained model."
         elif c.speaker_embedding_file:
             speaker_mapping = load_speaker_mapping(c.speaker_embedding_file)
-            assert all([speaker in speaker_mapping
-                        for speaker in speakers]), "In the datasets there are " \
-                                                   "speakers who are not present " \
-                                                   "in speaker_mapping (speakers.json)."
         else:
-            speaker_mapping = {name: {'id': i, 'embedding':None} for i, name in enumerate(speakers)}
-            
-            
+            raise "You need pass  one speaker embedding file, run  GE2E-Speaker_Encoder- ExtractSpeakerEmbeddings-by-sample.ipynb notebook in notebooks folder"            
+        num_speakers = len(get_speakers(meta_data_train))
         save_speaker_mapping(OUT_PATH, speaker_mapping)
-        num_speakers = len(speaker_mapping)
-
-        if isinstance(speaker_mapping[speakers[0]],dict):
-            speaker_embedding_weights = get_speakers_embedding(speaker_mapping) if speaker_mapping[speakers[0]]['embedding'] is not None else None
-            speaker_embedding_dim = len(speaker_mapping[speakers[0]]['embedding']) if speaker_mapping[speakers[0]]['embedding'] is not None else 256
-        else: # its necessary for old version compatibility
-            speaker_embedding_weights = None
-            speaker_embedding_dim = 256
-
-        print("Training with {} speakers: {}".format(num_speakers,
-                                                     ", ".join(speakers)))
+        speaker_embedding_dim = len(speaker_mapping[speaker_mapping.keys()[0]]['embedding']) 
+        
     else:
         num_speakers = 0
 
-    model = setup_model(num_chars, num_speakers, c, speaker_embedding_dim, speaker_embedding_weights)
+    model = setup_model(num_chars, num_speakers, c, speaker_embedding_dim)
 
     print(" | > Num output units : {}".format(ap.num_freq), flush=True)
 
