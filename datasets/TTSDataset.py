@@ -129,7 +129,8 @@ class MyDataset(Dataset):
             'text': text,
             'wav': wav,
             'item_idx': self.items[idx][1],
-            'speaker_name': speaker_name
+            'speaker_name': speaker_name,
+            'wav_file_name': os.path.basename(wav_file)
         }
         return sample
 
@@ -195,8 +196,10 @@ class MyDataset(Dataset):
             text = [batch[idx]['text'] for idx in ids_sorted_decreasing]
             speaker_name = [batch[idx]['speaker_name']
                             for idx in ids_sorted_decreasing]
+            wav_files_names = [batch[idx]['wav_file_name']
+                            for idx in ids_sorted_decreasing]               
             # get speaker embeddings        
-            speaker_embedding = [self.speaker_mapping[os.path.basename(w)]['embedding'] for w in wav]
+            speaker_embedding = [self.speaker_mapping[w]['embedding'] for w in wav_files_names]
 
             # compute features
             mel = [self.ap.melspectrogram(w).astype('float32') for w in wav]
