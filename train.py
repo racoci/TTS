@@ -36,11 +36,14 @@ torch.backends.cudnn.benchmark = False
 torch.manual_seed(54321)
 use_cuda = torch.cuda.is_available()
 num_gpus = torch.cuda.device_count()
+
+speaker_mapping = {}
 print(" > Using CUDA: ", use_cuda)
 print(" > Number of GPUs: ", num_gpus)
 
 
 def setup_loader(ap, r, is_val=False, verbose=False):
+    global speaker_mapping
     if is_val and not c.run_eval:
         loader = None
     else:
@@ -76,8 +79,8 @@ def setup_loader(ap, r, is_val=False, verbose=False):
 
 
 def format_data(data):
-    if c.use_speaker_embedding:
-        speaker_mapping = load_speaker_mapping(OUT_PATH)
+    '''if c.use_speaker_embedding:
+        speaker_mapping = load_speaker_mapping(OUT_PATH)'''
 
     # setup input data
     text_input = data[0]
@@ -317,8 +320,8 @@ def train(model, criterion, optimizer, optimizer_st, scheduler,
 @torch.no_grad()
 def evaluate(model, criterion, ap, global_step, epoch):
     data_loader = setup_loader(ap, model.decoder.r, is_val=True)
-    if c.use_speaker_embedding:
-        speaker_mapping = load_speaker_mapping(OUT_PATH)
+    '''if c.use_speaker_embedding:
+        speaker_mapping = load_speaker_mapping(OUT_PATH)'''
     model.eval()
     epoch_time = 0
     eval_values_dict = {
@@ -505,7 +508,7 @@ def evaluate(model, criterion, ap, global_step, epoch):
 # FIXME: move args definition/parsing inside of main?
 def main(args):  # pylint: disable=redefined-outer-name
     # pylint: disable=global-variable-undefined
-    global meta_data_train, meta_data_eval, symbols, phonemes
+    global meta_data_train, meta_data_eval, symbols, phonemes, speaker_mapping
     # Audio processor
     ap = AudioProcessor(**c.audio)
     if 'characters' in c.keys():
