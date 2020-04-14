@@ -135,20 +135,20 @@ class Tacotron(nn.Module):
         return decoder_outputs, postnet_outputs, alignments, stop_tokens
 
     @torch.no_grad()
-    def inference(self, characters, speaker_embeddings=None, style_mel=None):
+    def inference(self, characters, speaker_embedding=None, style_mel=None):
         inputs = self.embedding(characters)
         self._init_states()
-        if speaker_embeddings is not None:
+        if speaker_embedding is not None:
             inputs = self._concat_speaker_embedding(inputs.transpose(0, 1),
-                                                    speaker_embeddings).transpose(0, 1)
+                                                    speaker_embedding).transpose(0, 1)
         encoder_outputs = self.encoder(inputs)
         if self.gst and style_mel is not None:
             encoder_outputs = self.compute_gst(encoder_outputs, style_mel)
-        if speaker_embeddings is not None:
+        if speaker_embedding is not None:
             encoder_outputs = self._concat_speaker_embedding(
-                encoder_outputs.transpose(0, 1), speaker_embeddings).transpose(0, 1)
+                encoder_outputs.transpose(0, 1), speaker_embedding).transpose(0, 1)
             self.speaker_embeddings_projected = self.speaker_project_mel(
-                speaker_embeddings).squeeze(1)
+                speaker_embedding).squeeze(1)
             
         decoder_outputs, alignments, stop_tokens = self.decoder.inference(
             encoder_outputs, self.speaker_embeddings_projected)

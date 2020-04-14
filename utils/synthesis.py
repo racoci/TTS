@@ -122,6 +122,11 @@ def synthesis(model,
     # preprocess the given text
     inputs = text_to_seqvec(text, CONFIG, use_cuda)
     speaker_embedding = id_to_torch(speaker_embedding)
+    #convert tensor for float
+    
+    dtype = torch.cuda.FloatTensor if use_cuda else torch.FloatTensor
+    speaker_embedding = speaker_embedding.type(dtype)
+
     if speaker_embedding is not None and use_cuda:
         speaker_embedding = speaker_embedding.cuda()
     # synthesize voice

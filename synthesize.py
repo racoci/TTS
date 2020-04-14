@@ -91,9 +91,9 @@ if __name__ == "__main__":
                         help="JSON file for multi-speaker model.",
                         default="")
     parser.add_argument(
-        '--speaker_embedding',
-        type=list,
-        help="list with target speaker_embedding if the model is multi-speaker.",
+        '--speaker_fileid',
+        type=str,
+        help="name of speaker embedding reference present in speakers_json.",
         default=None)
     args = parser.parse_args()
 
@@ -113,11 +113,19 @@ if __name__ == "__main__":
         symbols, phonemes = make_symbols(**C.characters)
 
     # load speakers
-    if args.speaker_embedding is not None:
-        speaker_embedding_dim = len(args.speaker_embedding)
-        num_speakers = 2 # for multi speaker
+    if args.speakers_json != '':
+        speaker_mapping = load_speaker_mapping(args.speakers_json)
+        if args.speaker_fileid  is not None:
+            speaker_embedding = speaker_mapping[args.speaker_fileid]['embedding']
+        else:
+            speaker_embedding = speaker_mapping[list(speaker_mapping.keys())[0]]['embedding']
+
+        speaker_embedding_dim = len(speaker_embedding)
+        num_speakers = 2 # its need > 1 for activate multi speaker
     else:
         num_speakers = 0
+        speaker_embedding_dim = None
+        speaker_embedding = None
 
     # load the model
     num_chars = len(phonemes) if C.use_phonemes else len(symbols)
@@ -170,7 +178,7 @@ if __name__ == "__main__":
                        ap_vocoder,
                        args.use_cuda,
                        args.batched_vocoder,
-                       speaker_embedding=args.speaker_embedding,
+                       speaker_embedding=speaker_embedding,
                        figures=False)
 
     # save the results
