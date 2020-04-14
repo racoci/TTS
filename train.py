@@ -113,7 +113,7 @@ def format_data(data):
         linear_input = linear_input.cuda(non_blocking=True) if c.model in ["Tacotron"] else None
         stop_targets = stop_targets.cuda(non_blocking=True)
         if speaker_embeddings is not None:
-            speaker_embeddings = spspeaker_embeddings.cuda(non_blocking=True)
+            speaker_embeddings = speaker_embeddings.cuda(non_blocking=True)
     return text_input, text_lengths, mel_input, mel_lengths, linear_input, stop_targets, speaker_embeddings, avg_text_length, avg_spec_length
 
 
