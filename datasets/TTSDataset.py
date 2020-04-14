@@ -197,9 +197,12 @@ class MyDataset(Dataset):
             speaker_name = [batch[idx]['speaker_name']
                             for idx in ids_sorted_decreasing]
             wav_files_names = [batch[idx]['wav_file_name']
-                            for idx in ids_sorted_decreasing]               
-            # get speaker embeddings        
-            speaker_embedding = [self.speaker_mapping[w]['embedding'] for w in wav_files_names]
+                            for idx in ids_sorted_decreasing
+            if speaker_mapping  is not None:                              
+                # get speaker embeddings        
+                speaker_embedding = [self.speaker_mapping[w]['embedding'] for w in wav_files_names]
+            else:
+                speaker_embedding = None
 
             # compute features
             mel = [self.ap.melspectrogram(w).astype('float32') for w in wav]
