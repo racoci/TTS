@@ -22,12 +22,12 @@ def tts(model,
         ap_vocoder,
         use_cuda,
         batched_vocoder,
-        speaker_id=None,
+        speaker_embedding=None,
         figures=False):
     t_1 = time.time()
     use_vocoder_model = vocoder_model is not None
     waveform, alignment, _, postnet_output, stop_tokens = synthesis(
-        model, text, C, use_cuda, ap, speaker_id, style_wav=False,
+        model, text, C, use_cuda, ap, speaker_embedding=speaker_embedding, style_wav=False,
         truncated=False, enable_eos_bos_chars=C.enable_eos_bos_chars,
         use_griffin_lim=(not use_vocoder_model), do_trim_silence=True)
 
@@ -91,9 +91,9 @@ if __name__ == "__main__":
                         help="JSON file for multi-speaker model.",
                         default="")
     parser.add_argument(
-        '--speaker_id',
-        type=int,
-        help="target speaker_id if the model is multi-speaker.",
+        '--speaker_embedding',
+        type=list,
+        help="list with target speaker_embedding if the model is multi-speaker.",
         default=None)
     args = parser.parse_args()
 
@@ -113,17 +113,15 @@ if __name__ == "__main__":
         symbols, phonemes = make_symbols(**C.characters)
 
     # load speakers
-    if args.speakers_json != '':
-        speaker_mapping = load_speaker_mapping(args.speakers_json)
-        speaker_embedding_weights = get_speakers_embedding(speaker_mapping) 
-        speaker_embedding_dim = len(speaker_mapping[list(speaker_mapping.keys())[0]]['embedding'])
-        num_speakers = len(speaker_mapping)
+    if args.speaker_embedding is not None:
+        speaker_embedding_dim = len(args.speaker_embedding)
+        num_speakers = 2 # for multi speaker
     else:
         num_speakers = 0
 
     # load the model
     num_chars = len(phonemes) if C.use_phonemes else len(symbols)
-    model = setup_model(num_chars, num_speakers, C, speaker_embedding_dim, speaker_embedding_weights)
+    model = setup_model(num_chars, num_speakers, C, speaker_embedding_dim)
     cp = torch.load(args.model_path)
     model.load_state_dict(cp['model'])
     model.eval()
@@ -172,7 +170,7 @@ if __name__ == "__main__":
                        ap_vocoder,
                        args.use_cuda,
                        args.batched_vocoder,
-                       speaker_id=args.speaker_id,
+                       speaker_embedding=args.speaker_embedding,
                        figures=False)
 
     # save the results
@@ -182,3 +180,4 @@ if __name__ == "__main__":
     out_path = os.path.join(args.out_path, file_name)
     print(" > Saving output to {}".format(out_path))
     ap.save_wav(wav, out_path)
+

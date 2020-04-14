@@ -30,17 +30,17 @@ def compute_style_mel(style_wav, ap, use_cuda):
     return style_mel
 
 
-def run_model(model, inputs, CONFIG, truncated, speaker_id=None, style_mel=None):
+def run_model(model, inputs, CONFIG, truncated, speaker_embedding=None, style_mel=None):
     if CONFIG.use_gst:
         decoder_output, postnet_output, alignments, stop_tokens = model.inference(
-            inputs, style_mel=style_mel, speaker_ids=speaker_id)
-    else:
+            inputs, style_mel=style_mel, speaker_embedding=speaker_embedding)
+    else:   
         if truncated:
             decoder_output, postnet_output, alignments, stop_tokens = model.inference_truncated(
-                inputs, speaker_ids=speaker_id)
+                inputs, speaker_embedding=speaker_embedding)
         else:
             decoder_output, postnet_output, alignments, stop_tokens = model.inference(
-                inputs, speaker_ids=speaker_id)
+                inputs, speaker_embedding=speaker_embedding)
     return decoder_output, postnet_output, alignments, stop_tokens
 
 
@@ -63,11 +63,11 @@ def inv_spectrogram(postnet_output, ap, CONFIG):
     return wav
 
 
-def id_to_torch(speaker_id):
-    if speaker_id is not None:
-        speaker_id = np.asarray(speaker_id)
-        speaker_id = torch.from_numpy(speaker_id).unsqueeze(0)
-    return speaker_id
+def id_to_torch(speaker_embedding):
+    if speaker_embedding is not None:
+        speaker_embedding = np.asarray(speaker_embedding)
+        speaker_embedding = torch.from_numpy(speaker_embedding).unsqueeze(0)
+    return speaker_embedding
 
 
 # TODO: perform GL with pytorch for batching
@@ -93,7 +93,7 @@ def synthesis(model,
               CONFIG,
               use_cuda,
               ap,
-              speaker_id=None,
+              speaker_embedding=None,
               style_wav=None,
               truncated=False,
               enable_eos_bos_chars=False, #pylint: disable=unused-argument
@@ -121,12 +121,12 @@ def synthesis(model,
         style_mel = compute_style_mel(style_wav, ap, use_cuda)
     # preprocess the given text
     inputs = text_to_seqvec(text, CONFIG, use_cuda)
-    speaker_id = id_to_torch(speaker_id)
-    if speaker_id is not None and use_cuda:
-        speaker_id = speaker_id.cuda()
+    speaker_embedding = id_to_torch(speaker_embedding)
+    if speaker_embedding is not None and use_cuda:
+        speaker_embedding = speaker_embedding.cuda()
     # synthesize voice
     decoder_output, postnet_output, alignments, stop_tokens = run_model(
-        model, inputs, CONFIG, truncated, speaker_id, style_mel)
+        model, inputs, CONFIG, truncated, speaker_embedding, style_mel)
     # convert outputs to numpy
     postnet_output, decoder_output, alignment = parse_outputs(
         postnet_output, decoder_output, alignments)
@@ -138,3 +138,4 @@ def synthesis(model,
         if do_trim_silence:
             wav = trim_silence(wav, ap)
     return wav, alignment, decoder_output, postnet_output, stop_tokens
+
