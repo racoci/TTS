@@ -533,7 +533,7 @@ def main(args):  # pylint: disable=redefined-outer-name
             raise "You need pass  one speaker embedding file, run  GE2E-Speaker_Encoder- ExtractSpeakerEmbeddings-by-sample.ipynb notebook in notebooks folder"            
         num_speakers = len(get_speakers(meta_data_train))
         save_speaker_mapping(OUT_PATH, speaker_mapping)
-        speaker_embedding_dim = len(speaker_mapping[list(speaker_mapping.keys()([0]]['embedding']) 
+        speaker_embedding_dim = len(speaker_mapping[list(speaker_mapping.keys())[0]]['embedding']) 
         
     else:
         num_speakers = 0
