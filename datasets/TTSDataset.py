@@ -198,7 +198,7 @@ class MyDataset(Dataset):
                             for idx in ids_sorted_decreasing]
             wav_files_names = [batch[idx]['wav_file_name']
                             for idx in ids_sorted_decreasing]
-            if speaker_mapping  is not None:                              
+            if self.speaker_mapping  is not None:                              
                 # get speaker embeddings        
                 speaker_embedding = [self.speaker_mapping[w]['embedding'] for w in wav_files_names]
             else:
