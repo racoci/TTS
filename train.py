@@ -96,7 +96,7 @@ def format_data(data):
     if c.use_speaker_embedding:
         speaker_embeddings = data[3]
     else:
-        speaker_ids = None
+        speaker_embeddings = None
 
     # set stop targets view, we predict a single stop token per iteration.
     stop_targets = stop_targets.view(text_input.shape[0],
@@ -112,8 +112,8 @@ def format_data(data):
         mel_lengths = mel_lengths.cuda(non_blocking=True)
         linear_input = linear_input.cuda(non_blocking=True) if c.model in ["Tacotron"] else None
         stop_targets = stop_targets.cuda(non_blocking=True)
-        if speaker_ids is not None:
-            speaker_ids = speaker_ids.cuda(non_blocking=True)
+        if speaker_embeddings is not None:
+            speaker_embeddings = spspeaker_embeddings.cuda(non_blocking=True)
     return text_input, text_lengths, mel_input, mel_lengths, linear_input, stop_targets, speaker_embeddings, avg_text_length, avg_spec_length
 
 
@@ -165,10 +165,10 @@ def train(model, criterion, optimizer, optimizer_st, scheduler,
         # forward pass model
         if c.bidirectional_decoder:
             decoder_output, postnet_output, alignments, stop_tokens, decoder_backward_output, alignments_backward = model(
-                text_input, text_lengths, mel_input, speaker_ids=speaker_ids)
+                text_input, text_lengths, mel_input, speaker_embeddings=speaker_embeddings)
         else:
             decoder_output, postnet_output, alignments, stop_tokens = model(
-                text_input, text_lengths, mel_input, speaker_ids=speaker_ids)
+                text_input, text_lengths, mel_input, speaker_embeddings=speaker_embeddings)
             decoder_backward_output = None
 
         # set the alignment lengths wrt reduction factor for guided attention
@@ -344,7 +344,7 @@ def evaluate(model, criterion, ap, global_step, epoch):
             start_time = time.time()
 
             # format data
-            text_input, text_lengths, mel_input, mel_lengths, linear_input, stop_targets, speaker_ids, _, _ = format_data(data)
+            text_input, text_lengths, mel_input, mel_lengths, linear_input, stop_targets, speaker_embeddings, _, _ = format_data(data)
             assert mel_input.shape[1] % model.decoder.r == 0
 
             # forward pass model
