@@ -31,6 +31,8 @@ from TTS.datasets.preprocess import load_meta_data
 from TTS.utils.radam import RAdam
 from TTS.utils.measures import alignment_diagonal_score
 
+from random import randrange
+
 torch.backends.cudnn.enabled = True
 torch.backends.cudnn.benchmark = False
 torch.manual_seed(54321)
@@ -319,6 +321,7 @@ def train(model, criterion, optimizer, optimizer_st, scheduler,
 
 @torch.no_grad()
 def evaluate(model, criterion, ap, global_step, epoch):
+    global speaker_mapping
     data_loader = setup_loader(ap, model.decoder.r, is_val=True)
     '''if c.use_speaker_embedding:
         speaker_mapping = load_speaker_mapping(OUT_PATH)'''
@@ -469,7 +472,7 @@ def evaluate(model, criterion, ap, global_step, epoch):
         test_audios = {}
         test_figures = {}
         print(" | > Synthesizing test sentences")
-        speaker_id = 0 if c.use_speaker_embedding else None
+        speaker_embedding = speaker_mapping[list(speaker_mapping.keys())[randrange(len(speaker_mapping)-1)]]['embedding'] if c.use_speaker_embedding else None
         style_wav = c.get("style_wav_for_test")
         for idx, test_sentence in enumerate(test_sentences):
             try:
@@ -479,7 +482,7 @@ def evaluate(model, criterion, ap, global_step, epoch):
                     c,
                     use_cuda,
                     ap,
-                    speaker_id=speaker_id,
+                    speaker_embedding=speaker_embedding,
                     style_wav=style_wav,
                     truncated=False,
                     enable_eos_bos_chars=c.enable_eos_bos_chars, #pylint: disable=unused-argument
