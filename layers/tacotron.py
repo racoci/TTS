@@ -309,7 +309,7 @@ class Decoder(nn.Module):
         # RNN_state -> |Linear| -> mel_spec
         self.proj_to_mel = nn.Linear(256, memory_dim * self.r_init)
         # learn init values instead of zero init.
-        self.stopnet = StopNet(256 + memory_dim * self.r_init)
+        self.stopnet = StopNet(256 + speaker_embedding_dim + memory_dim * self.r_init )
 
     def set_r(self, new_r):
         self.r = new_r
@@ -356,7 +356,7 @@ class Decoder(nn.Module):
         outputs = outputs.transpose(1, 2)
         return outputs, attentions, stop_tokens
 
-    def decode(self, inputs, mask=None):
+    def decode(self, inputs, mask=None, speaker_embeddings=None):
         # Prenet
         processed_memory = self.prenet(self.memory_input)
         # Attention RNN
@@ -382,6 +382,8 @@ class Decoder(nn.Module):
         # output = torch.sigmoid(output)
         # predict stop token
         stopnet_input = torch.cat([decoder_output, output], -1)
+        if speaker_embeddings is not None:
+            stopnet_input = torch.cat([stopnet_input, speaker_embeddings], dim=-1)
         if self.separate_stopnet:
             stop_token = self.stopnet(stopnet_input.detach())
         else:
@@ -432,7 +434,7 @@ class Decoder(nn.Module):
                 self._update_memory_input(new_memory)
             if speaker_embeddings is not None:
                 self.memory_input = torch.cat([self.memory_input, speaker_embeddings], dim=-1)
-            output, stop_token, attention = self.decode(inputs, mask)
+            output, stop_token, attention = self.decode(inputs, mask, speaker_embeddings)
             outputs += [output]
             attentions += [attention]
             stop_tokens += [stop_token.squeeze(1)]
@@ -462,7 +464,7 @@ class Decoder(nn.Module):
                 self._update_memory_input(new_memory)
             if speaker_embeddings is not None:
                 self.memory_input = torch.cat([self.memory_input, speaker_embeddings], dim=-1)
-            output, stop_token, attention = self.decode(inputs, None)
+            output, stop_token, attention = self.decode(inputs, None, speaker_embeddings)
             stop_token = torch.sigmoid(stop_token.data)
             outputs += [output]
             attentions += [attention]
