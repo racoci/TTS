@@ -36,11 +36,6 @@ class Tacotron2(nn.Module):
         self.bidirectional_decoder = bidirectional_decoder
         decoder_dim = 512+speaker_embedding_dim if num_speakers > 1 else 512
         encoder_dim = 512 if num_speakers > 1 else 512
-        '''
-        # if encoder receive speaker embedding
-        decoder_dim = 512+speaker_embedding_dim*2 if num_speakers > 1 else 512
-        encoder_dim = 512+speaker_embedding_dim  if num_speakers > 1 else 512
-        '''
         proj_speaker_dim = 80 if num_speakers > 1 else 0
         # embedding layer
         self.embedding = nn.Embedding(num_chars, 512, padding_idx=0)
@@ -53,23 +48,19 @@ class Tacotron2(nn.Module):
             else:
                 self.speaker_embedding = nn.Embedding(num_speakers, speaker_embedding_dim)
                 self.speaker_embedding.weight.data.normal_(0, 0.3)
-            self.speaker_project_mel = nn.Sequential(
-                nn.Linear(speaker_embedding_dim, proj_speaker_dim), nn.Tanh())
 
             self.speaker_embeddings = None
-            self.speaker_embeddings_projected = None
         self.encoder = Encoder(encoder_dim)
         self.decoder = Decoder(decoder_dim, self.decoder_output_dim, r, attn_type, attn_win,
                                attn_norm, prenet_type, prenet_dropout,
                                forward_attn, trans_agent, forward_attn_mask,
-                               location_attn, attn_K, separate_stopnet, proj_speaker_dim)
+                               location_attn, attn_K, separate_stopnet)
         if self.bidirectional_decoder:
             self.decoder_backward = copy.deepcopy(self.decoder)
         self.postnet = Postnet(self.postnet_output_dim)
 
     def _init_states(self):
         self.speaker_embeddings = None
-        self.speaker_embeddings_projected = None
 
     def compute_speaker_embedding(self, speaker_ids):
         if hasattr(self, "speaker_embedding") and speaker_ids is None:
@@ -79,8 +70,6 @@ class Tacotron2(nn.Module):
         if hasattr(self, "speaker_embedding") and speaker_ids is not None:
             self.speaker_embeddings = self._compute_speaker_embedding(
                 speaker_ids)
-            self.speaker_embeddings_projected = self.speaker_project_mel(
-                self.speaker_embeddings).squeeze(1)
 
     def forward(self, characters, text_lengths, mel_specs=None, speaker_ids=None):
         self._init_states()
@@ -88,18 +77,12 @@ class Tacotron2(nn.Module):
         mask = sequence_mask(text_lengths).to(characters.device)
         embedded_inputs = self.embedding(characters).transpose(1, 2)
         self.compute_speaker_embedding(speaker_ids)
-        '''
-        # if encoder receive speaker embedding
-        if self.num_speakers > 1:
-            embedded_inputs = self._concat_speaker_embedding(embedded_inputs.transpose(1,2),
-                                                    self.speaker_embeddings).transpose(1,2)'''
         encoder_outputs = self.encoder(embedded_inputs, text_lengths)
         if self.num_speakers > 1:
             encoder_outputs = self._concat_speaker_embedding(
                 encoder_outputs, self.speaker_embeddings)
         decoder_outputs, alignments, stop_tokens = self.decoder(
-            encoder_outputs, mel_specs, mask,
-            self.speaker_embeddings_projected)
+            encoder_outputs, mel_specs, mask)
         postnet_outputs = self.postnet(decoder_outputs)
         postnet_outputs = decoder_outputs + postnet_outputs
         decoder_outputs, postnet_outputs, alignments = self.shape_outputs(
@@ -132,7 +115,7 @@ class Tacotron2(nn.Module):
             encoder_outputs = self._concat_speaker_embedding(
                 encoder_outputs, self.speaker_embeddings)
         mel_outputs, alignments, stop_tokens = self.decoder.inference(
-            encoder_outputs, self.speaker_embeddings_projected)
+            encoder_outputs)
         mel_outputs_postnet = self.postnet(mel_outputs)
         mel_outputs_postnet = mel_outputs + mel_outputs_postnet
         mel_outputs, mel_outputs_postnet, alignments = self.shape_outputs(
@@ -164,8 +147,7 @@ class Tacotron2(nn.Module):
 
     def _backward_inference(self, mel_specs, encoder_outputs, mask):
         decoder_outputs_b, alignments_b, _ = self.decoder_backward(
-            encoder_outputs, torch.flip(mel_specs, dims=(1,)), mask,
-            self.speaker_embeddings_projected)
+            encoder_outputs, torch.flip(mel_specs, dims=(1,)), mask)
         decoder_outputs_b = decoder_outputs_b.transpose(1, 2)
         return decoder_outputs_b, alignments_b
 
