@@ -323,8 +323,6 @@ def train(model, criterion, optimizer, optimizer_st, scheduler,
 def evaluate(model, criterion, ap, global_step, epoch):
     global speaker_mapping
     data_loader = setup_loader(ap, model.decoder.r, is_val=True)
-    '''if c.use_speaker_embedding:
-        speaker_mapping = load_speaker_mapping(OUT_PATH)'''
     model.eval()
     epoch_time = 0
     eval_values_dict = {

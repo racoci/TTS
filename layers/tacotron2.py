@@ -99,8 +99,7 @@ class Decoder(nn.Module):
     #pylint: disable=attribute-defined-outside-init
     def __init__(self, in_features, memory_dim, r, attn_type, attn_win, attn_norm,
                  prenet_type, prenet_dropout, forward_attn, trans_agent,
-                 forward_attn_mask, location_attn, attn_K, separate_stopnet,
-                 speaker_embedding_dim):
+                 forward_attn_mask, location_attn, attn_K, separate_stopnet):
         super(Decoder, self).__init__()
         self.memory_dim = memory_dim
         self.r_init = r
@@ -116,7 +115,7 @@ class Decoder(nn.Module):
         self.p_decoder_dropout = 0.1
 
         # memory -> |Prenet| -> processed_memory
-        prenet_dim = self.memory_dim + speaker_embedding_dim
+        prenet_dim = self.memory_dim
         self.prenet = Prenet(
             prenet_dim,
             prenet_type,
@@ -247,7 +246,7 @@ class Decoder(nn.Module):
         decoder_output = decoder_output[:, :self.r * self.memory_dim]
         return decoder_output, self.attention.attention_weights, stop_token
 
-    def forward(self, inputs, memories, mask, speaker_embeddings=None):
+    def forward(self, inputs, memories, mask):
         memory = self.get_go_frame(inputs).unsqueeze(0)
         memories = self._reshape_memory(memories)
         memories = torch.cat((memory, memories), dim=0)
@@ -257,9 +256,7 @@ class Decoder(nn.Module):
         outputs, stop_tokens, alignments = [], [], []
         while len(outputs) < memories.size(0) - 1:
             memory = memories[len(outputs)]
-            if speaker_embeddings is not None:
-                memory = torch.cat([memory, speaker_embeddings], dim=-1)
-                memory = self.prenet(memory)
+            memory = self.prenet(memory)
             decoder_output, attention_weights, stop_token = self.decode(memory)
             outputs += [decoder_output.squeeze(1)]
             stop_tokens += [stop_token.squeeze(1)]
@@ -269,7 +266,7 @@ class Decoder(nn.Module):
             outputs, stop_tokens, alignments)
         return outputs, alignments, stop_tokens
 
-    def inference(self, inputs, speaker_embeddings=None):
+    def inference(self, inputs):
         memory = self.get_go_frame(inputs)
         memory = self._update_memory(memory)
 
@@ -279,8 +276,6 @@ class Decoder(nn.Module):
         outputs, stop_tokens, alignments, t = [], [], [], 0
         while True:
             memory = self.prenet(memory)
-            if speaker_embeddings is not None:
-                memory = torch.cat([memory, speaker_embeddings], dim=-1)
             decoder_output, alignment, stop_token = self.decode(memory)
             stop_token = torch.sigmoid(stop_token.data)
             outputs += [decoder_output.squeeze(1)]

@@ -61,6 +61,7 @@ class MyDataset(Dataset):
         self.speaker_mapping = speaker_mapping
         self.enable_eos_bos = enable_eos_bos
         self.verbose = verbose
+
         if use_phonemes and not os.path.isdir(phoneme_cache_path):
             os.makedirs(phoneme_cache_path, exist_ok=True)
         if self.verbose:
@@ -71,9 +72,22 @@ class MyDataset(Dataset):
             print(" | > Number of instances : {}".format(len(self.items)))
         self.sort_items()
 
+        # this function append speaker_embeddings in self.items
+        self.initialize_speaker_embeddings()
+
     def load_wav(self, filename):
         audio = self.ap.load_wav(filename,sr=self.sample_rate)
         return audio
+
+    def initialize_speaker_embeddings(self):
+        for i in range(len(self.items)):
+            if self.speaker_mapping  is not None: 
+                wav_file_name = os.path.basename(self.items[i][1])
+                speaker_embedding = self.speaker_mapping[wav_file_name]['embedding']
+                self.items[i].append(speaker_embedding)
+            else: 
+                self.items[i].append(None)
+
 
     @staticmethod
     def load_np(filename):
@@ -113,7 +127,7 @@ class MyDataset(Dataset):
         return phonemes
 
     def load_data(self, idx):
-        text, wav_file, speaker_name = self.items[idx]
+        text, wav_file, speaker_name, speaker_embedding = self.items[idx]
         wav = np.asarray(self.load_wav(wav_file), dtype=np.float32)
 
         if self.use_phonemes:
@@ -130,7 +144,8 @@ class MyDataset(Dataset):
             'wav': wav,
             'item_idx': self.items[idx][1],
             'speaker_name': speaker_name,
-            'wav_file_name': os.path.basename(wav_file)
+            'wav_file_name': os.path.basename(wav_file),
+            'speaker_embedding': speaker_embedding
         }
         return sample
 
@@ -198,9 +213,8 @@ class MyDataset(Dataset):
                             for idx in ids_sorted_decreasing]
             wav_files_names = [batch[idx]['wav_file_name']
                             for idx in ids_sorted_decreasing]
-            if self.speaker_mapping  is not None:                              
-                # get speaker embeddings        
-                speaker_embedding = [self.speaker_mapping[w]['embedding'] for w in wav_files_names]
+            if self.speaker_mapping  is not None:                
+                speaker_embedding = [batch[idx]['speaker_embedding'] for idx in ids_sorted_decreasing]
             else:
                 speaker_embedding = None
 
