@@ -41,14 +41,7 @@ class Tacotron2(nn.Module):
         std = sqrt(2.0 / (num_chars + 512))
         val = sqrt(3.0) * std  # uniform bounds for std
         self.embedding.weight.data.uniform_(-val, val)
-        if num_speakers > 1:
-            if speaker_embedding_weights:
-                self.speaker_embedding= nn.Embedding.from_pretrained(torch.FloatTensor(speaker_embedding_weights))
-            else:
-                self.speaker_embedding = nn.Embedding(num_speakers, speaker_embedding_dim)
-                self.speaker_embedding.weight.data.normal_(0, 0.3)
 
-            self.speaker_embeddings = None
         self.encoder = Encoder(encoder_dim)
         self.decoder = Decoder(decoder_dim, self.decoder_output_dim, r, attn_type, attn_win,
                                attn_norm, prenet_type, prenet_dropout,
@@ -61,25 +54,15 @@ class Tacotron2(nn.Module):
     def _init_states(self):
         self.speaker_embeddings = None
 
-    def compute_speaker_embedding(self, speaker_ids):
-        if hasattr(self, "speaker_embedding") and speaker_ids is None:
-            raise RuntimeError(
-                " [!] Model has speaker embedding layer but speaker_id is not provided"
-            )
-        if hasattr(self, "speaker_embedding") and speaker_ids is not None:
-            self.speaker_embeddings = self._compute_speaker_embedding(
-                speaker_ids)
-
-    def forward(self, characters, text_lengths, mel_specs=None, speaker_ids=None):
-        self._init_states()
+    def forward(self, characters, text_lengths, mel_specs=None, speaker_embeddings=None):
         # compute mask for padding
         mask = sequence_mask(text_lengths).to(characters.device)
         embedded_inputs = self.embedding(characters).transpose(1, 2)
-        self.compute_speaker_embedding(speaker_ids)
+        
         encoder_outputs = self.encoder(embedded_inputs, text_lengths)
         if self.num_speakers > 1:
             encoder_outputs = self._concat_speaker_embedding(
-                encoder_outputs, self.speaker_embeddings)
+                encoder_outputs.transpose(0, 1), speaker_embeddings).transpose(0, 1)
         decoder_outputs, alignments, stop_tokens = self.decoder(
             encoder_outputs, mel_specs, mask)
         postnet_outputs = self.postnet(decoder_outputs)
@@ -100,14 +83,12 @@ class Tacotron2(nn.Module):
     
 
     @torch.no_grad()
-    def inference(self, characters, speaker_ids=None):
+    def inference(self, characters, speaker_embeddings=None):
         embedded_inputs = self.embedding(characters).transpose(1, 2)
-        self._init_states()
-        self.compute_speaker_embedding(speaker_ids)
         encoder_outputs = self.encoder.inference(embedded_inputs)
         if self.num_speakers > 1:
             encoder_outputs = self._concat_speaker_embedding(
-                encoder_outputs, self.speaker_embeddings)
+                encoder_outputs, speaker_embeddings)
         mel_outputs, alignments, stop_tokens = self.decoder.inference(
             encoder_outputs)
         mel_outputs_postnet = self.postnet(mel_outputs)
@@ -116,16 +97,15 @@ class Tacotron2(nn.Module):
             mel_outputs, mel_outputs_postnet, alignments)
         return mel_outputs, mel_outputs_postnet, alignments, stop_tokens
 
-    def inference_truncated(self, text, speaker_ids=None):
+    def inference_truncated(self, text, speaker_embeddings=None):
         """
         Preserve model states for continuous inference
         """
-        self.compute_speaker_embedding(speaker_ids)
         embedded_inputs = self.embedding(text).transpose(1, 2)
         encoder_outputs = self.encoder.inference_truncated(embedded_inputs)
         if self.num_speakers > 1:
             encoder_outputs = self._concat_speaker_embedding(
-                encoder_outputs, self.speaker_embeddings)
+                encoder_outputs, speaker_embeddings)
         mel_outputs, alignments, stop_tokens = self.decoder.inference_truncated(
             encoder_output)
         mel_outputs_postnet = self.postnet(mel_outputs)
@@ -157,4 +137,3 @@ class Tacotron2(nn.Module):
             outputs.size(0), outputs.size(1), -1)    
         outputs = torch.cat([outputs, speaker_embeddings_], dim=-1)
         return outputs
-
