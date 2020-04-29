@@ -211,6 +211,9 @@ def vctk(root_path, meta_files=None, wavs_path='wav48'):
     for meta_file in meta_files:
         txt, speaker_id, txt_file = os.path.relpath(meta_file,root_path).split(os.sep)
         file_id = txt_file.split('.')[0]
+        if isinstance(meta_files, list): # if is list ignore this speakers ids
+            if speaker_id in meta_files:
+                continue
         with open(meta_file) as file_text:
             text = file_text.readlines()[0]
         
