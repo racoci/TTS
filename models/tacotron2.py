@@ -83,12 +83,12 @@ class Tacotron2(nn.Module):
     
 
     @torch.no_grad()
-    def inference(self, characters, speaker_embeddings=None):
+    def inference(self, characters, speaker_embedding=None):
         embedded_inputs = self.embedding(characters).transpose(1, 2)
         encoder_outputs = self.encoder.inference(embedded_inputs)
         if self.num_speakers > 1:
             encoder_outputs = self._concat_speaker_embedding(
-                encoder_outputs, speaker_embeddings)
+                encoder_outputs, speaker_embedding)
         mel_outputs, alignments, stop_tokens = self.decoder.inference(
             encoder_outputs)
         mel_outputs_postnet = self.postnet(mel_outputs)
@@ -97,7 +97,7 @@ class Tacotron2(nn.Module):
             mel_outputs, mel_outputs_postnet, alignments)
         return mel_outputs, mel_outputs_postnet, alignments, stop_tokens
 
-    def inference_truncated(self, text, speaker_embeddings=None):
+    def inference_truncated(self, text, speaker_embedding=None):
         """
         Preserve model states for continuous inference
         """
@@ -105,7 +105,7 @@ class Tacotron2(nn.Module):
         encoder_outputs = self.encoder.inference_truncated(embedded_inputs)
         if self.num_speakers > 1:
             encoder_outputs = self._concat_speaker_embedding(
-                encoder_outputs, speaker_embeddings)
+                encoder_outputs, speaker_embedding)
         mel_outputs, alignments, stop_tokens = self.decoder.inference_truncated(
             encoder_output)
         mel_outputs_postnet = self.postnet(mel_outputs)
