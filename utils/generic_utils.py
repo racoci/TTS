@@ -521,5 +521,5 @@ def check_config(c):
     for dataset_entry in c['datasets']:
         _check_argument('name', dataset_entry, restricted=True, val_type=str)
         _check_argument('path', dataset_entry, restricted=True, val_type=str)
-        _check_argument('meta_file_train', dataset_entry, restricted=True, val_type=str)
+        #_check_argument('meta_file_train', dataset_entry, restricted=True, val_type=str)
         _check_argument('meta_file_val', dataset_entry, restricted=True, val_type=str)
