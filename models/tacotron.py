@@ -37,10 +37,13 @@ class Tacotron(nn.Module):
         self.gst = gst
         self.num_speakers = num_speakers
         self.bidirectional_decoder = bidirectional_decoder
-        decoder_dim = 256+speaker_embedding_dim if num_speakers > 1 else 256
+
+        gst_embedding_dim = 256
+
+        decoder_dim = 256+speaker_embedding_dim+gst_embedding_dim if num_speakers > 1 else 256
         encoder_dim = 256
         proj_speaker_dim = 80 if num_speakers > 1 else 0
-        gst_embedding_dim = 256
+        
         
         # embedding layer
         self.embedding = nn.Embedding(num_chars, 256, padding_idx=0)
@@ -70,7 +73,7 @@ class Tacotron(nn.Module):
         # global style token layers
         if self.gst:
             self.gst_layer = GST(num_mel=80,
-                                 num_heads=4,
+                                 num_heads=8,
                                  num_style_tokens=10,
                                  embedding_dim=gst_embedding_dim)
 
@@ -80,7 +83,8 @@ class Tacotron(nn.Module):
 
     def compute_gst(self, inputs, mel_specs):
         gst_outputs = self.gst_layer(mel_specs)
-        inputs = self._add_speaker_embedding(inputs, gst_outputs)
+        inputs = self._concat_speaker_embedding(inputs, gst_outputs)
+        #inputs = self._add_speaker_embedding(inputs, gst_outputs)
         return  inputs, gst_outputs
 
     def forward(self, characters, text_lengths, mel_specs, speaker_embeddings=None):
@@ -99,7 +103,7 @@ class Tacotron(nn.Module):
         encoder_outputs = self.encoder(inputs)
         if self.gst:
             # B x gst_dim
-            encoder_outputs, gts_embedding = self.compute_gst(encoder_outputs, mel_specs)
+            encoder_outputs, gts_embedding = self.compute_gst(encoder_outputs.transpose(0, 1), mel_specs).transpose(0, 1)
         if speaker_embeddings is not None:
             encoder_outputs = self._concat_speaker_embedding(
                 encoder_outputs.transpose(0, 1), speaker_embeddings).transpose(0, 1)
@@ -132,7 +136,7 @@ class Tacotron(nn.Module):
         self._init_states()
         encoder_outputs = self.encoder(inputs)
         if self.gst and style_mel is not None:
-            encoder_outputs, gst_embedding = self.compute_gst(encoder_outputs, style_mel)
+            encoder_outputs, gst_embedding = self.compute_gst(encoder_outputs.transpose(0, 1), style_mel).transpose(0, 1)
         if speaker_embedding is not None:
             encoder_outputs = self._concat_speaker_embedding(
                 encoder_outputs.transpose(0, 1), speaker_embedding).transpose(0, 1)
