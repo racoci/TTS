@@ -308,7 +308,6 @@ def setup_model(num_chars, num_speakers, c, speaker_embedding_dim=256):
                         num_speakers=num_speakers,
                         r=c.r,
                         speaker_embedding_dim=speaker_embedding_dim,
-                        speaker_embedding_weights=speaker_embedding_weights,
                         postnet_output_dim=c.audio['num_mels'],
                         decoder_output_dim=c.audio['num_mels'],
                         attn_type=c.attention_type,
