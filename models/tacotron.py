@@ -38,13 +38,10 @@ class Tacotron(nn.Module):
         self.num_speakers = num_speakers
         self.bidirectional_decoder = bidirectional_decoder
 
-        gst_embedding_dim = 256
-
+        gst_embedding_dim = 256 if self.gst else 0
         decoder_dim = 256+speaker_embedding_dim+gst_embedding_dim if num_speakers > 1 else 256
         encoder_dim = 256
         proj_speaker_dim = 80 if num_speakers > 1 else 0
-        
-        
         # embedding layer
         self.embedding = nn.Embedding(num_chars, 256, padding_idx=0)
         self.embedding.weight.data.normal_(0, 0.3)
@@ -67,7 +64,7 @@ class Tacotron(nn.Module):
                     nn.Linear(speaker_embedding_dim+gst_embedding_dim, proj_speaker_dim), nn.Tanh())
             else:
                 self.speaker_project_mel = nn.Sequential(
-                    nn.Linear(speaker_embedding_dim, proj_speaker_dim), nn.Tanh())    
+                    nn.Linear(speaker_embedding_dim, proj_speaker_dim), nn.Tanh())
             self.speaker_embeddings = None
             self.speaker_embeddings_projected = None
         # global style token layers
@@ -103,13 +100,13 @@ class Tacotron(nn.Module):
         encoder_outputs = self.encoder(inputs)
         if self.gst:
             # B x gst_dim
-            encoder_outputs, gts_embedding = self.compute_gst(encoder_outputs.transpose(0, 1), mel_specs).transpose(0, 1)
+            encoder_outputs, gts_embedding = self.compute_gst(encoder_outputs, mel_specs)
         if speaker_embeddings is not None:
             encoder_outputs = self._concat_speaker_embedding(
                 encoder_outputs.transpose(0, 1), speaker_embeddings).transpose(0, 1)
             if self.gst:
                 self.speaker_embeddings_projected = self.speaker_project_mel(
-                    self._concat_speaker_embedding(gts_embedding, speaker_embeddings)).squeeze(1)
+                    self._concat_speaker_embedding(gts_embedding.transpose(0, 1), speaker_embeddings)).transpose(0, 1).squeeze(1)
             else:
                 self.speaker_embeddings_projected = self.speaker_project_mel(
                     speaker_embeddings).squeeze(1)
@@ -136,16 +133,16 @@ class Tacotron(nn.Module):
         self._init_states()
         encoder_outputs = self.encoder(inputs)
         if self.gst and style_mel is not None:
-            encoder_outputs, gst_embedding = self.compute_gst(encoder_outputs.transpose(0, 1), style_mel).transpose(0, 1)
+            encoder_outputs, gst_embedding = self.compute_gst(encoder_outputs, style_mel)
         if speaker_embedding is not None:
             encoder_outputs = self._concat_speaker_embedding(
                 encoder_outputs.transpose(0, 1), speaker_embedding).transpose(0, 1)
             if self.gst and style_mel is not None:
                 self.speaker_embeddings_projected = self.speaker_project_mel(
-                    speaker_embedding).squeeze(1)
+                    self._concat_speaker_embedding(gst_embedding.transpose(0, 1), speaker_embedding)).transpose(0, 1).squeeze(1)
             else:
                 self.speaker_embeddings_projected = self.speaker_project_mel(
-                    self._concat_speaker_embedding(gst_embedding, speaker_embedding)).squeeze(1)
+                    speaker_embedding).squeeze(1)
 
         decoder_outputs, alignments, stop_tokens = self.decoder.inference(
             encoder_outputs, self.speaker_embeddings_projected)

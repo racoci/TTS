@@ -22,9 +22,8 @@ def text_to_seqvec(text, CONFIG, use_cuda):
 
 
 def compute_style_mel(style_wav, ap, use_cuda):
-    print(style_wav)
     style_mel = torch.FloatTensor(ap.melspectrogram(
-        ap.load_wav(style_wav))).unsqueeze(0)
+        ap.load_wav(style_wav, sr=ap.sample_rate))).unsqueeze(0)
     if use_cuda:
         return style_mel.cuda()
     return style_mel
@@ -117,7 +116,7 @@ def synthesis(model,
     """
     # GST processing
     style_mel = None
-    if CONFIG.model == "TacotronGST" and style_wav is not None:
+    if CONFIG.model == "TacotronGST" and style_wav is not None or CONFIG.use_gst and style_wav is not None:
         style_mel = compute_style_mel(style_wav, ap, use_cuda)
     # preprocess the given text
     inputs = text_to_seqvec(text, CONFIG, use_cuda)

@@ -185,7 +185,7 @@ def train(model, criterion, optimizer, optimizer_st, scheduler,
                               mel_lengths, decoder_backward_output,
                               alignments, alignment_lengths, text_lengths)
         if c.bidirectional_decoder:
-            keep_avg.update_values({'avg_decoder_b_loss': loss_dict['decoder_backward_loss'].item(),
+            keep_avg.update_values({'avg_decoder_b_loss': loss_dict['decoder_b_loss'].item(),
                                     'avg_decoder_c_loss': loss_dict['decoder_c_loss'].item()})
         if c.ga_alpha > 0:
             keep_avg.update_values({'avg_ga_loss': loss_dict['ga_loss'].item()})
@@ -369,7 +369,7 @@ def evaluate(model, criterion, ap, global_step, epoch):
                                   mel_lengths, decoder_backward_output,
                                   alignments, alignment_lengths, text_lengths)
             if c.bidirectional_decoder:
-                keep_avg.update_values({'avg_decoder_b_loss': loss_dict['decoder_backward_loss'].item(),
+                keep_avg.update_values({'avg_decoder_b_loss': loss_dict['decoder_b_loss'].item(),
                                         'avg_decoder_c_loss': loss_dict['decoder_c_loss'].item()})
             if c.ga_alpha > 0:
                 keep_avg.update_values({'avg_ga_loss': loss_dict['ga_loss'].item()})
@@ -472,6 +472,7 @@ def evaluate(model, criterion, ap, global_step, epoch):
         print(" | > Synthesizing test sentences")
         speaker_embedding = speaker_mapping[list(speaker_mapping.keys())[randrange(len(speaker_mapping)-1)]]['embedding'] if c.use_speaker_embedding else None
         style_wav = c.get("style_wav_for_test")
+        print(style_wav)
         for idx, test_sentence in enumerate(test_sentences):
             try:
                 wav, alignment, decoder_output, postnet_output, stop_tokens = synthesis(

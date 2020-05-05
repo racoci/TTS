@@ -259,7 +259,7 @@ class Decoder(nn.Module):
             memory = memories[len(outputs)]
             if speaker_embeddings is not None:
                 memory = torch.cat([memory, speaker_embeddings], dim=-1)
-                memory = self.prenet(memory)
+            memory = self.prenet(memory)
             decoder_output, attention_weights, stop_token = self.decode(memory)
             outputs += [decoder_output.squeeze(1)]
             stop_tokens += [stop_token.squeeze(1)]
@@ -278,9 +278,9 @@ class Decoder(nn.Module):
 
         outputs, stop_tokens, alignments, t = [], [], [], 0
         while True:
-            memory = self.prenet(memory)
             if speaker_embeddings is not None:
                 memory = torch.cat([memory, speaker_embeddings], dim=-1)
+            memory = self.prenet(memory)
             decoder_output, alignment, stop_token = self.decode(memory)
             stop_token = torch.sigmoid(stop_token.data)
             outputs += [decoder_output.squeeze(1)]
@@ -301,7 +301,7 @@ class Decoder(nn.Module):
 
         return outputs, alignments, stop_tokens
 
-    def inference_truncated(self, inputs):
+    def inference_truncated(self, inputs, speaker_embeddings=None):
         """
         Preserve decoder states for continuous inference
         """
@@ -316,6 +316,8 @@ class Decoder(nn.Module):
         outputs, stop_tokens, alignments, t = [], [], [], 0
         stop_flags = [True, False, False]
         while True:
+            if speaker_embeddings is not None:
+                memory = torch.cat([memory, speaker_embeddings], dim=-1)
             memory = self.prenet(self.memory_truncated)
             decoder_output, alignment, stop_token = self.decode(memory)
             stop_token = torch.sigmoid(stop_token.data)
