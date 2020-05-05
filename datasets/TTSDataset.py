@@ -74,8 +74,8 @@ class MyDataset(Dataset):
 
         self.speaker_embeddings = []
         # this function append speaker_embeddings in self.speaker_embeddings
-
-        self.initialize_speaker_embeddings()
+        if speaker_mapping is not None:
+            self.initialize_speaker_embeddings()
 
     def load_wav(self, filename):
         audio = self.ap.load_wav(filename,sr=self.sample_rate)
@@ -251,7 +251,8 @@ class MyDataset(Dataset):
             text_lenghts = torch.LongTensor(text_lenghts)
             text = torch.LongTensor(text)
             mel = torch.FloatTensor(mel).contiguous()
-            speaker_embedding = torch.FloatTensor(speaker_embedding)
+            if self.speaker_mapping  is not None:
+                speaker_embedding = torch.FloatTensor(speaker_embedding)
             mel_lengths = torch.LongTensor(mel_lengths)
             stop_targets = torch.FloatTensor(stop_targets)
 

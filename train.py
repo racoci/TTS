@@ -62,7 +62,7 @@ def setup_loader(ap, r, is_val=False, verbose=False):
             max_seq_len=c.max_seq_len,
             phoneme_cache_path=c.phoneme_cache_path,
             use_phonemes=c.use_phonemes,
-            speaker_mapping=speaker_mapping,
+            speaker_mapping=speaker_mapping if c.use_speaker_embedding else None,
             phoneme_language=c.phoneme_language,
             enable_eos_bos=c.enable_eos_bos_chars,
             verbose=verbose)

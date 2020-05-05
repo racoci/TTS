@@ -37,7 +37,9 @@ class Tacotron2(nn.Module):
         self.bidirectional_decoder = bidirectional_decoder
 
         gst_embedding_dim = 256 if self.gst else 0
-        decoder_dim = 512+speaker_embedding_dim+gst_embedding_dim  if num_speakers > 1 else 512
+        speaker_embedding_dim = speaker_embedding_dim if num_speakers > 1 else 0
+
+        decoder_dim = 512+speaker_embedding_dim+gst_embedding_dim  
         encoder_dim = 512 if num_speakers > 1 else 512
         proj_speaker_dim = 80 if num_speakers > 1 else 0
         # embedding layer
