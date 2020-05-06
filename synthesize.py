@@ -27,7 +27,7 @@ def tts(model,
     t_1 = time.time()
     use_vocoder_model = vocoder_model is not None
     waveform, alignment, _, postnet_output, stop_tokens = synthesis(
-        model, text, C, use_cuda, ap, speaker_embedding=speaker_embedding, style_wav=False,
+        model, text, C, use_cuda, ap, speaker_embedding=speaker_embedding, style_wav=C.get("style_wav_for_test"),
         truncated=False, enable_eos_bos_chars=C.enable_eos_bos_chars,
         use_griffin_lim=(not use_vocoder_model), do_trim_silence=True)
 
