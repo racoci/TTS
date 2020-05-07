@@ -72,24 +72,9 @@ class MyDataset(Dataset):
             print(" | > Number of instances : {}".format(len(self.items)))
         self.sort_items()
 
-        self.speaker_embeddings = []
-        # this function append speaker_embeddings in self.speaker_embeddings
-        if speaker_mapping is not None:
-            self.initialize_speaker_embeddings()
-
     def load_wav(self, filename):
         audio = self.ap.load_wav(filename,sr=self.sample_rate)
         return audio
-
-    def initialize_speaker_embeddings(self):
-        for i in range(len(self.items)):
-            if self.speaker_mapping  is not None: 
-                wav_file_name = os.path.basename(self.items[i][1])
-                speaker_embedding = self.speaker_mapping[wav_file_name]['embedding']
-                self.speaker_embeddings.append(speaker_embedding)
-            else: 
-                self.speaker_embeddings.append(None)
-
 
     @staticmethod
     def load_np(filename):
@@ -131,10 +116,6 @@ class MyDataset(Dataset):
     def load_data(self, idx):
         text, wav_file, speaker_name = self.items[idx]
         wav = np.asarray(self.load_wav(wav_file), dtype=np.float32)
-        if self.speaker_mapping  is not None: 
-            speaker_embedding = self.speaker_embeddings[idx]
-        else:
-            speaker_embedding = None
 
         if self.use_phonemes:
             text = self._load_or_generate_phoneme_sequence(wav_file, text)
@@ -150,8 +131,7 @@ class MyDataset(Dataset):
             'wav': wav,
             'item_idx': self.items[idx][1],
             'speaker_name': speaker_name,
-            'wav_file_name': os.path.basename(wav_file),
-            'speaker_embedding': speaker_embedding
+            'wav_file_name': os.path.basename(wav_file)
         }
         return sample
 
@@ -219,8 +199,10 @@ class MyDataset(Dataset):
                             for idx in ids_sorted_decreasing]
             wav_files_names = [batch[idx]['wav_file_name']
                             for idx in ids_sorted_decreasing]
-            if self.speaker_mapping  is not None:                
-                speaker_embedding = [batch[idx]['speaker_embedding'] for idx in ids_sorted_decreasing]
+
+            if self.speaker_mapping  is not None:                              
+                # get speaker embeddings        
+                speaker_embedding = [self.speaker_mapping[w]['embedding'] for w in wav_files_names]
             else:
                 speaker_embedding = None
 
@@ -251,7 +233,7 @@ class MyDataset(Dataset):
             text_lenghts = torch.LongTensor(text_lenghts)
             text = torch.LongTensor(text)
             mel = torch.FloatTensor(mel).contiguous()
-            if self.speaker_mapping  is not None:
+            if speaker_embedding is not None:
                 speaker_embedding = torch.FloatTensor(speaker_embedding)
             mel_lengths = torch.LongTensor(mel_lengths)
             stop_targets = torch.FloatTensor(stop_targets)
