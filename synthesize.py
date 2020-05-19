@@ -23,11 +23,14 @@ def tts(model,
         use_cuda,
         batched_vocoder,
         speaker_embedding=None,
+        style_wav=None,
         figures=False):
+    if style_wav is None:
+        style_wav = C.get("style_wav_for_test")
     t_1 = time.time()
     use_vocoder_model = vocoder_model is not None
     waveform, alignment, _, postnet_output, stop_tokens = synthesis(
-        model, text, C, use_cuda, ap, speaker_embedding=speaker_embedding, style_wav=C.get("style_wav_for_test"),
+        model, text, C, use_cuda, ap, speaker_embedding=speaker_embedding, style_wav=style_wav,
         truncated=False, enable_eos_bos_chars=C.enable_eos_bos_chars,
         use_griffin_lim=(not use_vocoder_model), do_trim_silence=True)
 
@@ -94,6 +97,11 @@ if __name__ == "__main__":
         '--speaker_fileid',
         type=str,
         help="name of speaker embedding reference present in speakers_json.",
+        default=None)
+    parser.add_argument(
+        '--style_wav',
+        type=str,
+        help="Path for GST style_wav reference.",
         default=None)
     args = parser.parse_args()
 
@@ -179,10 +187,11 @@ if __name__ == "__main__":
                        args.use_cuda,
                        args.batched_vocoder,
                        speaker_embedding=speaker_embedding,
+                       style_wav=args.style_wav,
                        figures=False)
 
     # save the results
-    file_name = args.text.replace(" ", "_")
+    file_name = args.speaker_fileid.replace('.wav','')+args.text.replace(" ", "_")
     file_name = file_name.translate(
         str.maketrans('', '', string.punctuation.replace('_', ''))) + '.wav'
     out_path = os.path.join(args.out_path, file_name)
