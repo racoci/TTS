@@ -1,5 +1,6 @@
 import torch
 import numpy as np
+import random
 from .text import text_to_sequence, phoneme_to_sequence
 
 
@@ -117,17 +118,17 @@ def synthesis(model,
     # GST processing
     style_mel = None
     if CONFIG.model == "TacotronGST" and style_wav is not None or CONFIG.use_gst and style_wav is not None:
+        if isinstance(style_wav, list):
+            style_wav = style_wav[random.randint(0,len(style_wav))]
         style_mel = compute_style_mel(style_wav, ap, use_cuda)
     # preprocess the given text
     inputs = text_to_seqvec(text, CONFIG, use_cuda)
-    speaker_embedding = id_to_torch(speaker_embedding)
-    #convert tensor for float
-    
-    dtype = torch.cuda.FloatTensor if use_cuda else torch.FloatTensor
-    speaker_embedding = speaker_embedding.type(dtype)
 
+    #convert tensor for float
+    speaker_embedding = id_to_torch(speaker_embedding)
     if speaker_embedding is not None and use_cuda:
         speaker_embedding = speaker_embedding.cuda()
+
     # synthesize voice
     decoder_output, postnet_output, alignments, stop_tokens = run_model(
         model, inputs, CONFIG, truncated, speaker_embedding, style_mel)

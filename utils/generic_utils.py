@@ -513,7 +513,7 @@ def check_config(c):
     # multi-speaker gst
     _check_argument('use_speaker_embedding', c, restricted=True, val_type=bool)
     _check_argument('speaker_embedding_file', c, restricted=True, val_type=str)
-    _check_argument('style_wav_for_test', c, restricted=True, val_type=str)
+    #_check_argument('style_wav_for_test', c, restricted=True, val_type=str)
     _check_argument('use_gst', c, restricted=True, val_type=bool)
 
     # datasets - checking only the first entry

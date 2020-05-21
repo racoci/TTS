@@ -470,8 +470,14 @@ def evaluate(model, criterion, ap, global_step, epoch):
         test_audios = {}
         test_figures = {}
         print(" | > Synthesizing test sentences")
-        speaker_embedding = speaker_mapping[list(speaker_mapping.keys())[randrange(len(speaker_mapping)-1)]]['embedding'] if c.use_speaker_embedding else None
-        style_wav = c.get("style_wav_for_test")
+        if c.use_speaker_embedding:
+            speaker_embedding = speaker_mapping[list(speaker_mapping.keys())[randrange(len(speaker_mapping)-1)]]['embedding'] if c.use_speaker_embedding else None
+        else:
+            speaker_embedding = None
+        if c.use_gst:
+            style_wav = c.get("style_wav_for_test")
+        else:
+            style_wav = None
         for idx, test_sentence in enumerate(test_sentences):
             try:
                 wav, alignment, decoder_output, postnet_output, stop_tokens = synthesis(
