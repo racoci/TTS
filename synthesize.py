@@ -5,6 +5,7 @@ import argparse
 import torch
 import json
 import string
+import yaml
 
 from TTS.utils.synthesis import synthesis
 from TTS.utils.generic_utils import load_config, setup_model
@@ -34,18 +35,24 @@ def tts(model,
         truncated=False, enable_eos_bos_chars=C.enable_eos_bos_chars,
         use_griffin_lim=(not use_vocoder_model), do_trim_silence=True)
 
-    if C.model == "Tacotron" and use_vocoder_model:
-        postnet_output = ap.out_linear_to_mel(postnet_output.T).T
-    # correct if there is a scale difference b/w two models
-    if use_vocoder_model:
+    if args.pwgan_voc != None and args.pwgan_config != None:
         postnet_output = ap._denormalize(postnet_output)
-        postnet_output = ap_vocoder._normalize(postnet_output)
-        vocoder_input = torch.FloatTensor(postnet_output.T).unsqueeze(0)
-        waveform = vocoder_model.generate(
-            vocoder_input.cuda() if use_cuda else vocoder_input,
-            batched=batched_vocoder,
-            target=8000,
-            overlap=400)
+        waveform = vocoder_model.inference(torch.FloatTensor(ap_vocoder._normalize(postnet_output).T).unsqueeze(0), hop_size=ap_vocoder.hop_length)
+        waveform = waveform.numpy()
+        use_griffin_lim=False
+    else:
+        if C.model == "Tacotron" and use_vocoder_model:
+            postnet_output = ap.out_linear_to_mel(postnet_output.T).T
+            # correct if there is a scale difference b/w two models
+        if use_vocoder_model:
+            postnet_output = ap._denormalize(postnet_output)
+            postnet_output = ap_vocoder._normalize(postnet_output)
+            vocoder_input = torch.FloatTensor(postnet_output.T).unsqueeze(0)
+            waveform = vocoder_model.generate(
+                vocoder_input.cuda() if use_cuda else vocoder_input,
+                batched=batched_vocoder,
+                target=8000,
+                overlap=400)
     print(" >  Run-time: {}".format(time.time() - t_1))
     return alignment, postnet_output, stop_tokens, waveform
 
@@ -103,6 +110,16 @@ if __name__ == "__main__":
         type=str,
         help="Path for GST style_wav reference.",
         default=None)
+    parser.add_argument(
+        '--pwgan_voc',
+        type=str,
+        help="Path to PWGAN vocoder model file. If it is not defined, model uses GL as vocoder. Please make sure that you installed PWGAN library from https://github.com/erogol/ParallelWaveGAN.git",
+        default=None)
+    parser.add_argument(
+        '--pwgan_config',
+        type=str,
+        help="Path to PWGAN config file. Please make sure that you installed PWGAN library from https://github.com/erogol/ParallelWaveGAN.git",
+        default=None)
     args = parser.parse_args()
 
     if args.vocoder_path != "":
@@ -146,11 +163,25 @@ if __name__ == "__main__":
     model.decoder.set_r(cp['r'])
 
     # load vocoder model
-    if args.vocoder_path != "":
-        VC = load_config(args.vocoder_config_path)
-        ap_vocoder = AudioProcessor(**VC.audio)
-        bits = 10
-        vocoder_model = VocoderModel(rnn_dims=512,
+    if args.pwgan_voc != None and args.pwgan_config != None:
+        from parallel_wavegan.models import ParallelWaveGANGenerator
+        from parallel_wavegan.utils.audio import AudioProcessor as AudioProcessorVocoder
+        with open(args.pwgan_config) as f:
+            PWGAN_MODEL = args.pwgan_voc
+            PWGAN_CONFIG = yaml.load(f, Loader=yaml.Loader)
+            VC = PWGAN_CONFIG
+            vocoder_model = ParallelWaveGANGenerator(**PWGAN_CONFIG["generator_params"])
+
+            vocoder_model.load_state_dict(torch.load(PWGAN_MODEL, map_location="cpu")["model"]["generator"])
+            vocoder_model.remove_weight_norm()
+            ap_vocoder = AudioProcessorVocoder(**PWGAN_CONFIG['audio'])
+            vocoder_model.eval()
+    else:
+        if args.vocoder_path != "":
+            VC = load_config(args.vocoder_config_path)
+            ap_vocoder = AudioProcessor(**VC.audio)
+            bits = 10
+            vocoder_model = VocoderModel(rnn_dims=512,
                                      fc_dims=512,
                                      mode=VC.mode,
                                      mulaw=VC.mulaw,
@@ -164,16 +195,15 @@ if __name__ == "__main__":
                                      sample_rate=ap.sample_rate,
                                      use_aux_net=True,
                                      use_upsample_net=True)
-
-        check = torch.load(args.vocoder_path)
-        vocoder_model.load_state_dict(check['model'])
-        vocoder_model.eval()
-        if args.use_cuda:
-            vocoder_model.cuda()
-    else:
-        vocoder_model = None
-        VC = None
-        ap_vocoder = None
+            check = torch.load(args.vocoder_path)
+            vocoder_model.load_state_dict(check['model'])
+            vocoder_model.eval()
+            if args.use_cuda:
+                vocoder_model.cuda()
+        else:
+            vocoder_model = None
+            VC = None
+            ap_vocoder = None
 
     # synthesize voice
     print(" > Text: {}".format(args.text))
@@ -191,8 +221,9 @@ if __name__ == "__main__":
                        figures=False)
 
     # save the results
-    file_name = args.speaker_fileid.replace('.wav','')+args.text.replace(" ", "_")
-    file_name = file_name.translate(
+    file_name = args.text.replace(" ", "_")
+    #Do not use the whole sentence as a name, in case it is too long and doesn't save
+    file_name = file_name[:6].translate(
         str.maketrans('', '', string.punctuation.replace('_', ''))) + '.wav'
     out_path = os.path.join(args.out_path, file_name)
     print(" > Saving output to {}".format(out_path))
