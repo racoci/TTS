@@ -122,6 +122,9 @@
     "speaker_embedding_file":"../../speakers-pt-embedding-por-sample.json",     // load specific embedding file
     "style_wav_for_test": null,          // path to style wav file to be used in TacotronGST inference.
     "use_gst": true,       // TACOTRON ONLY: use global style tokens
+    "gst_embedding_dim":512, // recomended 512 for multispeaker and 256 for single speaker
+    "gst_num_tokens":32, // recomended 32 for multispeaker (without speaker embedding) and 10 for single speaker
+    "gst_attn_num_heads":8, // recomended 8 for multispeaker and 4 for single speaker
 
     // DATASETS
     "datasets":   // List of datasets. They all merged and they get different s$

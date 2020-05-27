@@ -18,6 +18,9 @@ class Tacotron2(nn.Module):
                  attn_type='original',
                  attn_win=False,
                  gst=False,
+                 gst_embedding_dim=256,
+                 gst_num_tokens=10,
+                 gst_attn_num_heads=4,
                  attn_norm="softmax",
                  prenet_type="original",
                  prenet_dropout=True,
@@ -36,7 +39,8 @@ class Tacotron2(nn.Module):
         self.n_frames_per_step = r
         self.bidirectional_decoder = bidirectional_decoder
 
-        gst_embedding_dim = 256 if self.gst else 0
+        gst_embedding_dim = gst_embedding_dim if self.gst else 0
+
         speaker_embedding_dim = speaker_embedding_dim if num_speakers > 1 else 0
 
         decoder_dim = 512+speaker_embedding_dim+gst_embedding_dim  
@@ -68,9 +72,9 @@ class Tacotron2(nn.Module):
         # global style token layers
         if self.gst:
             self.gst_layer = GST(num_mel=80,
-                                 num_heads=8,
-                                 num_style_tokens=10,
-                                 embedding_dim=gst_embedding_dim)
+                                num_heads=gst_attn_num_heads,
+                                num_style_tokens=gst_num_tokens,
+                                embedding_dim=gst_embedding_dim)
 
     def _init_states(self):
         self.speaker_embeddings = None

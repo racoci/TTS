@@ -290,6 +290,9 @@ def setup_model(num_chars, num_speakers, c, speaker_embedding_dim=256):
                         postnet_output_dim=c.audio['num_freq'],
                         decoder_output_dim=c.audio['num_mels'],
                         gst=c.use_gst,
+                        gst_embedding_dim=c.gst_embedding_dim,
+                        gst_num_tokens=c.gst_num_tokens,
+                        gst_attn_num_heads=c.gst_attn_num_heads,
                         memory_size=c.memory_size,
                         attn_type=c.attention_type,
                         attn_win=c.windowing,
@@ -311,6 +314,9 @@ def setup_model(num_chars, num_speakers, c, speaker_embedding_dim=256):
                         postnet_output_dim=c.audio['num_mels'],
                         decoder_output_dim=c.audio['num_mels'],
                         gst=c.use_gst,
+                        gst_embedding_dim=c.gst_embedding_dim,
+                        gst_num_tokens=c.gst_num_tokens,
+                        gst_attn_num_heads=c.gst_attn_num_heads,
                         attn_type=c.attention_type,
                         attn_win=c.windowing,
                         attn_norm=c.attention_norm,
@@ -515,6 +521,9 @@ def check_config(c):
     _check_argument('speaker_embedding_file', c, restricted=True, val_type=str)
     #_check_argument('style_wav_for_test', c, restricted=True, val_type=str)
     _check_argument('use_gst', c, restricted=True, val_type=bool)
+    _check_argument('gst_embedding_dim', c, restricted=True, val_type=int, min_val=1)
+    _check_argument('gst_num_tokens', c, restricted=True, val_type=int, min_val=1)
+    _check_argument('gst_attn_num_heads', c, restricted=True, val_type=int, min_val=1)
 
     # datasets - checking only the first entry
     _check_argument('datasets', c, restricted=True, val_type=list)
