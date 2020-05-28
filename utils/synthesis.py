@@ -66,7 +66,7 @@ def inv_spectrogram(postnet_output, ap, CONFIG):
 def id_to_torch(speaker_embedding):
     if speaker_embedding is not None:
         speaker_embedding = np.asarray(speaker_embedding)
-        speaker_embedding = torch.from_numpy(speaker_embedding).unsqueeze(0)
+        speaker_embedding = torch.from_numpy(speaker_embedding).unsqueeze(0).type(torch.FloatTensor)
     return speaker_embedding
 
 

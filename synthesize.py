@@ -223,7 +223,7 @@ if __name__ == "__main__":
     # save the results
     file_name = args.text.replace(" ", "_")
     #Do not use the whole sentence as a name, in case it is too long and doesn't save
-    file_name = file_name[:6].translate(
+    file_name = file_name.translate(
         str.maketrans('', '', string.punctuation.replace('_', ''))) + '.wav'
     out_path = os.path.join(args.out_path, file_name)
     print(" > Saving output to {}".format(out_path))
