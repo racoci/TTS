@@ -116,7 +116,7 @@ class Decoder(nn.Module):
         self.p_decoder_dropout = 0.1
 
         # memory -> |Prenet| -> processed_memory
-        prenet_dim = self.memory_dim + speaker_embedding_dim
+        prenet_dim = self.memory_dim
         self.prenet = Prenet(
             prenet_dim,
             prenet_type,
