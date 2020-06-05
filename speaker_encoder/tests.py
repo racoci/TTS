@@ -3,7 +3,7 @@ import unittest
 import torch as T
 
 from TTS.speaker_encoder.model import SpeakerEncoder
-from TTS.speaker_encoder.loss import GE2ELoss
+from TTS.speaker_encoder.losses import GE2ELoss, AngleProtoLoss
 from TTS.utils.generic_utils import load_config
 
 
@@ -46,18 +46,31 @@ class SpeakerEncoderTests(unittest.TestCase):
         assert len(output.shape) == 2
 
 
-class GE2ELossTests(unittest.TestCase):
+class Tests(unittest.TestCase):
     # pylint: disable=R0201
     def test_in_out(self):
         # check random input
         dummy_input = T.rand(4, 5, 64)  # num_speaker x num_utterance x dim
+        # Test for GE2E loss
         loss = GE2ELoss(loss_method="softmax")
         output = loss.forward(dummy_input)
         assert output.item() >= 0.0
+        # Test for Angular Prototypical loss
+        loss = AngleProtoLoss()
+        output = loss.forward(dummy_input)
+        assert output.item() >= 0.0
+
         # check all zeros
         dummy_input = T.ones(4, 5, 64)  # num_speaker x num_utterance x dim
+        # Test for GE2E loss
         loss = GE2ELoss(loss_method="softmax")
         output = loss.forward(dummy_input)
+        assert output.item() >= 0.0
+        # Test for Angular Prototypical loss
+        loss = AngleProtoLoss()
+        output = loss.forward(dummy_input)
+        assert output.item() >= 0.0
+
         # check speaker loss with orthogonal d-vectors
         dummy_input = T.empty(3, 64)
         dummy_input = T.nn.init.orthogonal(dummy_input)
@@ -68,10 +81,14 @@ class GE2ELossTests(unittest.TestCase):
                 dummy_input[2].repeat(5, 1, 1).transpose(0, 1),
             ]
         )  # num_speaker x num_utterance x dim
+        # Test for GE2E loss
         loss = GE2ELoss(loss_method="softmax")
         output = loss.forward(dummy_input)
         assert output.item() < 0.005
-
+        # Test for Angular Prototypical loss
+        loss = AngleProtoLoss()
+        output = loss.forward(dummy_input)
+        assert output.item() < 0.005
 
 # class LoaderTest(unittest.TestCase):
 #     def test_output(self):
