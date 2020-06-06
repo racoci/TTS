@@ -130,10 +130,7 @@ def main(args):  # pylint: disable=redefined-outer-name
     global meta_data_eval
 
     ap = AudioProcessor(**c.audio)
-    model = SpeakerEncoder(input_dim=40,
-                           proj_dim=128,
-                           lstm_dim=384,
-                           num_lstm_layers=3)
+    model = SpeakerEncoder(**c.model)
     optimizer = RAdam(model.parameters(), lr=c.lr)
     if c.loss == "ge2e":
         criterion = GE2ELoss(loss_method='softmax')
@@ -151,7 +148,7 @@ def main(args):  # pylint: disable=redefined-outer-name
             if c.reinit_layers:
                 raise RuntimeError
             model.load_state_dict(checkpoint['model'])
-        except KeyError:
+        except:
             print(" > Partial model initialization.")
             model_dict = model.state_dict()
             model_dict = set_init_dict(model_dict, checkpoint, c)

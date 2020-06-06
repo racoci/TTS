@@ -141,11 +141,11 @@ class AngleProtoLoss(nn.Module):
         # pylint: disable=E1102
         self.b = nn.Parameter(torch.tensor(init_b))
         self.criterion = torch.nn.CrossEntropyLoss()
-        self.cuda = torch.cuda.is_available()
+        self.use_cuda = torch.cuda.is_available()
 
         print('Initialised Angular Prototypical loss')
 
-    def forward(self, x, cuda=True):
+    def forward(self, x):
         """
         Calculates the AngleProto loss for an input of dimensions (num_speakers, num_utts_per_speaker, dvec_feats)
         """
@@ -157,7 +157,7 @@ class AngleProtoLoss(nn.Module):
         torch.clamp(self.w, 1e-6)
         cos_sim_matrix = cos_sim_matrix * self.w + self.b
         label = torch.from_numpy(np.asarray(range(0,num_speakers)))
-        if self.cuda:
+        if self.use_cuda:
             label = label.cuda()
         L = self.criterion(cos_sim_matrix, label)
         return L

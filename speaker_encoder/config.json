@@ -42,7 +42,7 @@
             "print_step": 1, // Number of steps to log traning on console.
             "output_path": "../../checkpoints/libri_tts/speaker_encoder/", // DATASET-RELATED: output path for all training outputs.
             "model": {
-                "input_dim": 40,
+                "input_dim": 80, // input_dim == num_mels
                 "proj_dim": 128,
                 "lstm_dim": 384,
                 "num_lstm_layers": 3

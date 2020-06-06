@@ -39,7 +39,6 @@ class MyDataset(Dataset):
         wav = np.asarray(self.load_wav(wav_file), dtype=np.float32)
         mel = self.ap.melspectrogram(wav).astype("float32")
         # sample seq_len
-
         assert text.size > 0, self.items[idx][1]
         assert wav.size > 0, self.items[idx][1]
 
