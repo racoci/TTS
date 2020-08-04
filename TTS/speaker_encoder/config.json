@@ -47,7 +47,7 @@
         "proj_dim": 256,
         "lstm_dim": 256,
         "num_lstm_layers": 3,
-        "use_lstm_with_projection": true
+        "use_lstm_with_projection": false
     },
     "datasets": 
         [

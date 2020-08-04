@@ -34,7 +34,7 @@ class SpeakerEncoder(nn.Module):
         super().__init__()
         layers = []
         # choise LSTM layer
-        if not use_lstm_with_projection:
+        if use_lstm_with_projection:
             layers.append(LSTMWithProjection(input_dim, lstm_dim, proj_dim))
             for _ in range(num_lstm_layers - 1):
                 layers.append(LSTMWithProjection(proj_dim, lstm_dim, proj_dim))
