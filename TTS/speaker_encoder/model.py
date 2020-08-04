@@ -32,6 +32,7 @@ class LSTMWithoutProjection(nn.Module):
 class SpeakerEncoder(nn.Module):
     def __init__(self, input_dim, proj_dim=256, lstm_dim=768, num_lstm_layers=3, use_lstm_with_projection=True):
         super().__init__()
+        self.use_lstm_with_projection = use_lstm_with_projection
         layers = []
         # choise LSTM layer
         if use_lstm_with_projection:
@@ -54,12 +55,18 @@ class SpeakerEncoder(nn.Module):
     def forward(self, x):
         # TODO: implement state passing for lstms
         d = self.layers(x)
-        d = torch.nn.functional.normalize(d[:, -1], p=2, dim=1)
+        if self.use_lstm_with_projection:
+            d = torch.nn.functional.normalize(d[:, -1], p=2, dim=1)
+        else:
+            d = torch.nn.functional.normalize(d, p=2, dim=1)
         return d
 
     def inference(self, x):
         d = self.layers.forward(x)
-        d = torch.nn.functional.normalize(d[:, -1], p=2, dim=1)
+        if self.use_lstm_with_projection:
+            d = torch.nn.functional.normalize(d[:, -1], p=2, dim=1)
+        else:
+            d = torch.nn.functional.normalize(d, p=2, dim=1)
         return d
 
     def compute_embedding(self, x, num_frames=160, overlap=0.5):
