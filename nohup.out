@@ -1,0 +1,289 @@
+ > Using CUDA:  True
+ > Number of GPUs:  1
+ > Git Hash: 89e9bfe
+ > Experiment folder: ../checkpoints-glowtts-zeroshot-blank-token-new-fullconformer/glow-tts-multispeaker-October-27-2020_07+02PM-89e9bfe
+ > Setting up Audio Processor...
+ | > sample_rate:22050
+ | > num_mels:80
+ | > min_level_db:-100
+ | > frame_shift_ms:None
+ | > frame_length_ms:None
+ | > ref_level_db:20
+ | > fft_size:1024
+ | > power:1.5
+ | > preemphasis:0.98
+ | > griffin_lim_iters:60
+ | > signal_norm:True
+ | > symmetric_norm:True
+ | > mel_fmin:0
+ | > mel_fmax:8000.0
+ | > spec_gain:20.0
+ | > stft_pad_mode:reflect
+ | > max_norm:4.0
+ | > clip_norm:True
+ | > do_trim_silence:False
+ | > trim_db:60
+ | > do_sound_norm:False
+ | > stats_path:None
+ | > hop_length:256
+ | > win_length:1024
+ | > Found 39839 files in /mnt/datasets/VCTK-Corpus-removed-silence
+Training with 97 speakers: VCTK_p226, VCTK_p227, VCTK_p228, VCTK_p229, VCTK_p230, VCTK_p231, VCTK_p232, VCTK_p233, VCTK_p236, VCTK_p237, VCTK_p239, VCTK_p240, VCTK_p241, VCTK_p243, VCTK_p244, VCTK_p246, VCTK_p247, VCTK_p249, VCTK_p250, VCTK_p251, VCTK_p252, VCTK_p253, VCTK_p254, VCTK_p255, VCTK_p256, VCTK_p257, VCTK_p258, VCTK_p259, VCTK_p260, VCTK_p262, VCTK_p263, VCTK_p264, VCTK_p265, VCTK_p266, VCTK_p267, VCTK_p268, VCTK_p269, VCTK_p270, VCTK_p271, VCTK_p272, VCTK_p273, VCTK_p274, VCTK_p275, VCTK_p276, VCTK_p277, VCTK_p278, VCTK_p279, VCTK_p280, VCTK_p281, VCTK_p282, VCTK_p283, VCTK_p284, VCTK_p285, VCTK_p286, VCTK_p287, VCTK_p288, VCTK_p292, VCTK_p293, VCTK_p295, VCTK_p297, VCTK_p298, VCTK_p299, VCTK_p300, VCTK_p301, VCTK_p303, VCTK_p304, VCTK_p305, VCTK_p306, VCTK_p307, VCTK_p308, VCTK_p310, VCTK_p311, VCTK_p312, VCTK_p313, VCTK_p314, VCTK_p316, VCTK_p317, VCTK_p318, VCTK_p323, VCTK_p329, VCTK_p330, VCTK_p333, VCTK_p334, VCTK_p336, VCTK_p339, VCTK_p340, VCTK_p341, VCTK_p343, VCTK_p345, VCTK_p351, VCTK_p360, VCTK_p361, VCTK_p362, VCTK_p363, VCTK_p364, VCTK_p374, VCTK_p376
+ > Using model: glow_tts
+num Chars:  134
+ > Partial model initialization.
+ | > Layer missing in the model definition: encoder.encoder.attn_layers.0.conv_q.weight
+ | > Layer missing in the model definition: encoder.encoder.attn_layers.0.conv_q.bias
+ | > Layer missing in the model definition: encoder.encoder.attn_layers.0.conv_k.weight
+ | > Layer missing in the model definition: encoder.encoder.attn_layers.0.conv_k.bias
+ | > Layer missing in the model definition: encoder.encoder.attn_layers.0.conv_v.weight
+ | > Layer missing in the model definition: encoder.encoder.attn_layers.0.conv_v.bias
+ | > Layer missing in the model definition: encoder.encoder.attn_layers.0.conv_o.weight
+ | > Layer missing in the model definition: encoder.encoder.attn_layers.0.conv_o.bias
+ | > Layer missing in the model definition: encoder.encoder.attn_layers.1.conv_q.weight
+ | > Layer missing in the model definition: encoder.encoder.attn_layers.1.conv_q.bias
+ | > Layer missing in the model definition: encoder.encoder.attn_layers.1.conv_k.weight
+ | > Layer missing in the model definition: encoder.encoder.attn_layers.1.conv_k.bias
+ | > Layer missing in the model definition: encoder.encoder.attn_layers.1.conv_v.weight
+ | > Layer missing in the model definition: encoder.encoder.attn_layers.1.conv_v.bias
+ | > Layer missing in the model definition: encoder.encoder.attn_layers.1.conv_o.weight
+ | > Layer missing in the model definition: encoder.encoder.attn_layers.1.conv_o.bias
+ | > Layer missing in the model definition: encoder.encoder.attn_layers.2.conv_q.weight
+ | > Layer missing in the model definition: encoder.encoder.attn_layers.2.conv_q.bias
+ | > Layer missing in the model definition: encoder.encoder.attn_layers.2.conv_k.weight
+ | > Layer missing in the model definition: encoder.encoder.attn_layers.2.conv_k.bias
+ | > Layer missing in the model definition: encoder.encoder.attn_layers.2.conv_v.weight
+ | > Layer missing in the model definition: encoder.encoder.attn_layers.2.conv_v.bias
+ | > Layer missing in the model definition: encoder.encoder.attn_layers.2.conv_o.weight
+ | > Layer missing in the model definition: encoder.encoder.attn_layers.2.conv_o.bias
+ | > Layer missing in the model definition: encoder.encoder.attn_layers.3.conv_q.weight
+ | > Layer missing in the model definition: encoder.encoder.attn_layers.3.conv_q.bias
+ | > Layer missing in the model definition: encoder.encoder.attn_layers.3.conv_k.weight
+ | > Layer missing in the model definition: encoder.encoder.attn_layers.3.conv_k.bias
+ | > Layer missing in the model definition: encoder.encoder.attn_layers.3.conv_v.weight
+ | > Layer missing in the model definition: encoder.encoder.attn_layers.3.conv_v.bias
+ | > Layer missing in the model definition: encoder.encoder.attn_layers.3.conv_o.weight
+ | > Layer missing in the model definition: encoder.encoder.attn_layers.3.conv_o.bias
+ | > Layer missing in the model definition: encoder.encoder.attn_layers.4.conv_q.weight
+ | > Layer missing in the model definition: encoder.encoder.attn_layers.4.conv_q.bias
+ | > Layer missing in the model definition: encoder.encoder.attn_layers.4.conv_k.weight
+ | > Layer missing in the model definition: encoder.encoder.attn_layers.4.conv_k.bias
+ | > Layer missing in the model definition: encoder.encoder.attn_layers.4.conv_v.weight
+ | > Layer missing in the model definition: encoder.encoder.attn_layers.4.conv_v.bias
+ | > Layer missing in the model definition: encoder.encoder.attn_layers.4.conv_o.weight
+ | > Layer missing in the model definition: encoder.encoder.attn_layers.4.conv_o.bias
+ | > Layer missing in the model definition: encoder.encoder.attn_layers.5.conv_q.weight
+ | > Layer missing in the model definition: encoder.encoder.attn_layers.5.conv_q.bias
+ | > Layer missing in the model definition: encoder.encoder.attn_layers.5.conv_k.weight
+ | > Layer missing in the model definition: encoder.encoder.attn_layers.5.conv_k.bias
+ | > Layer missing in the model definition: encoder.encoder.attn_layers.5.conv_v.weight
+ | > Layer missing in the model definition: encoder.encoder.attn_layers.5.conv_v.bias
+ | > Layer missing in the model definition: encoder.encoder.attn_layers.5.conv_o.weight
+ | > Layer missing in the model definition: encoder.encoder.attn_layers.5.conv_o.bias
+ | > Layer missing in the model definition: encoder.encoder.norm_layers_1.0.gamma
+ | > Layer missing in the model definition: encoder.encoder.norm_layers_1.0.beta
+ | > Layer missing in the model definition: encoder.encoder.norm_layers_1.1.gamma
+ | > Layer missing in the model definition: encoder.encoder.norm_layers_1.1.beta
+ | > Layer missing in the model definition: encoder.encoder.norm_layers_1.2.gamma
+ | > Layer missing in the model definition: encoder.encoder.norm_layers_1.2.beta
+ | > Layer missing in the model definition: encoder.encoder.norm_layers_1.3.gamma
+ | > Layer missing in the model definition: encoder.encoder.norm_layers_1.3.beta
+ | > Layer missing in the model definition: encoder.encoder.norm_layers_1.4.gamma
+ | > Layer missing in the model definition: encoder.encoder.norm_layers_1.4.beta
+ | > Layer missing in the model definition: encoder.encoder.norm_layers_1.5.gamma
+ | > Layer missing in the model definition: encoder.encoder.norm_layers_1.5.beta
+ | > Layer missing in the model definition: encoder.encoder.ffn_layers.0.conv_1.weight
+ | > Layer missing in the model definition: encoder.encoder.ffn_layers.0.conv_1.bias
+ | > Layer missing in the model definition: encoder.encoder.ffn_layers.0.conv_2.weight
+ | > Layer missing in the model definition: encoder.encoder.ffn_layers.0.conv_2.bias
+ | > Layer missing in the model definition: encoder.encoder.ffn_layers.1.conv_1.weight
+ | > Layer missing in the model definition: encoder.encoder.ffn_layers.1.conv_1.bias
+ | > Layer missing in the model definition: encoder.encoder.ffn_layers.1.conv_2.weight
+ | > Layer missing in the model definition: encoder.encoder.ffn_layers.1.conv_2.bias
+ | > Layer missing in the model definition: encoder.encoder.ffn_layers.2.conv_1.weight
+ | > Layer missing in the model definition: encoder.encoder.ffn_layers.2.conv_1.bias
+ | > Layer missing in the model definition: encoder.encoder.ffn_layers.2.conv_2.weight
+ | > Layer missing in the model definition: encoder.encoder.ffn_layers.2.conv_2.bias
+ | > Layer missing in the model definition: encoder.encoder.ffn_layers.3.conv_1.weight
+ | > Layer missing in the model definition: encoder.encoder.ffn_layers.3.conv_1.bias
+ | > Layer missing in the model definition: encoder.encoder.ffn_layers.3.conv_2.weight
+ | > Layer missing in the model definition: encoder.encoder.ffn_layers.3.conv_2.bias
+ | > Layer missing in the model definition: encoder.encoder.ffn_layers.4.conv_1.weight
+ | > Layer missing in the model definition: encoder.encoder.ffn_layers.4.conv_1.bias
+ | > Layer missing in the model definition: encoder.encoder.ffn_layers.4.conv_2.weight
+ | > Layer missing in the model definition: encoder.encoder.ffn_layers.4.conv_2.bias
+ | > Layer missing in the model definition: encoder.encoder.ffn_layers.5.conv_1.weight
+ | > Layer missing in the model definition: encoder.encoder.ffn_layers.5.conv_1.bias
+ | > Layer missing in the model definition: encoder.encoder.ffn_layers.5.conv_2.weight
+ | > Layer missing in the model definition: encoder.encoder.ffn_layers.5.conv_2.bias
+ | > Layer missing in the model definition: encoder.encoder.norm_layers_2.0.gamma
+ | > Layer missing in the model definition: encoder.encoder.norm_layers_2.0.beta
+ | > Layer missing in the model definition: encoder.encoder.norm_layers_2.1.gamma
+ | > Layer missing in the model definition: encoder.encoder.norm_layers_2.1.beta
+ | > Layer missing in the model definition: encoder.encoder.norm_layers_2.2.gamma
+ | > Layer missing in the model definition: encoder.encoder.norm_layers_2.2.beta
+ | > Layer missing in the model definition: encoder.encoder.norm_layers_2.3.gamma
+ | > Layer missing in the model definition: encoder.encoder.norm_layers_2.3.beta
+ | > Layer missing in the model definition: encoder.encoder.norm_layers_2.4.gamma
+ | > Layer missing in the model definition: encoder.encoder.norm_layers_2.4.beta
+ | > Layer missing in the model definition: encoder.encoder.norm_layers_2.5.gamma
+ | > Layer missing in the model definition: encoder.encoder.norm_layers_2.5.beta
+ | > 446 / 654 layers are restored.
+ > Model restored from step 49131
+
+ > Model has 32696977 parameters
+ > Data depended initialization ... 
+
+[4m[1m > EPOCH: 0/10000[0m
+
+ > DataLoader initialization
+ | > Use phonemes: True
+   | > phoneme language: en
+ | > Number of instances : 39441
+ | > Max length sequence: 181
+ | > Min length sequence: 9
+ | > Avg length sequence: 39.618924469460715
+ | > Num. instances discarded by max-min (max=500, min=2) seq limits: 0
+ | > Batch group size: 0.
+
+[1m > TRAINING (2020-10-27 19:03:15) [0m
+
+[1m   --> STEP: 18/328 -- GLOBAL_STEP: 49150[0m
+     | > loss: nan  (nan)
+     | > log_mle: nan  (nan)
+     | > loss_dur: nan  (nan)
+     | > align_error: 0.25390  (0.19923)
+     | > avg_spec_length: 114.4
+     | > avg_text_length: 35.1
+     | > step_time: 10.4541
+     | > loader_time: 9.22
+     | > current_lr: 0.0002852779694214626
+
+[1m   --> STEP: 43/328 -- GLOBAL_STEP: 49175[0m
+     | > loss: nan  (nan)
+     | > log_mle: nan  (nan)
+     | > loss_dur: nan  (nan)
+     | > align_error: 0.15686  (0.19033)
+     | > avg_spec_length: 135.0
+     | > avg_text_length: 43.0
+     | > step_time: 10.0441
+     | > loader_time: 8.77
+     | > current_lr: 0.0002852054441960828
+
+[1m   --> STEP: 68/328 -- GLOBAL_STEP: 49200[0m
+     | > loss: nan  (nan)
+     | > log_mle: nan  (nan)
+     | > loss_dur: nan  (nan)
+     | > align_error: 0.17458  (0.17994)
+     | > avg_spec_length: 144.5
+     | > avg_text_length: 48.7
+     | > step_time: 9.5047
+     | > loader_time: 8.48
+     | > current_lr: 0.0002851329742561005
+/opt/conda/lib/python3.6/site-packages/torch/optim/lr_scheduler.py:123: UserWarning: Detected call of `lr_scheduler.step()` before `optimizer.step()`. In PyTorch 1.1.0 and later, you should call them in the opposite order: `optimizer.step()` before `lr_scheduler.step()`.  Failure to do this will result in PyTorch skipping the first value of the learning rate schedule. See more details at https://pytorch.org/docs/stable/optim.html#how-to-adjust-learning-rate
+  "https://pytorch.org/docs/stable/optim.html#how-to-adjust-learning-rate", UserWarning)
+[WARNING] NaN or Inf found in input tensor.
+[WARNING] NaN or Inf found in input tensor.
+[WARNING] NaN or Inf found in input tensor.
+[WARNING] NaN or Inf found in input tensor.
+
+[1m   --> STEP: 93/328 -- GLOBAL_STEP: 49225[0m
+     | > loss: nan  (nan)
+     | > log_mle: nan  (nan)
+     | > loss_dur: nan  (nan)
+     | > align_error: 0.18615  (0.17396)
+     | > avg_spec_length: 154.2
+     | > avg_text_length: 52.9
+     | > step_time: 11.4752
+     | > loader_time: 12.18
+     | > current_lr: 0.00028506055953131203
+ > Using CUDA:  True
+ > Number of GPUs:  1
+ > Git Hash: 89e9bfe
+ > Experiment folder: ../checkpoints-glowtts-zeroshot-blank-token-new/glow-tts-multispeaker-October-27-2020_07+25PM-89e9bfe
+ > Setting up Audio Processor...
+ | > sample_rate:22050
+ | > num_mels:80
+ | > min_level_db:-100
+ | > frame_shift_ms:None
+ | > frame_length_ms:None
+ | > ref_level_db:20
+ | > fft_size:1024
+ | > power:1.5
+ | > preemphasis:0.98
+ | > griffin_lim_iters:60
+ | > signal_norm:True
+ | > symmetric_norm:True
+ | > mel_fmin:0
+ | > mel_fmax:8000.0
+ | > spec_gain:20.0
+ | > stft_pad_mode:reflect
+ | > max_norm:4.0
+ | > clip_norm:True
+ | > do_trim_silence:False
+ | > trim_db:60
+ | > do_sound_norm:False
+ | > stats_path:None
+ | > hop_length:256
+ | > win_length:1024
+ | > Found 39839 files in /mnt/datasets/VCTK-Corpus-removed-silence
+Training with 97 speakers: VCTK_p226, VCTK_p227, VCTK_p228, VCTK_p229, VCTK_p230, VCTK_p231, VCTK_p232, VCTK_p233, VCTK_p236, VCTK_p237, VCTK_p239, VCTK_p240, VCTK_p241, VCTK_p243, VCTK_p244, VCTK_p246, VCTK_p247, VCTK_p249, VCTK_p250, VCTK_p251, VCTK_p252, VCTK_p253, VCTK_p254, VCTK_p255, VCTK_p256, VCTK_p257, VCTK_p258, VCTK_p259, VCTK_p260, VCTK_p262, VCTK_p263, VCTK_p264, VCTK_p265, VCTK_p266, VCTK_p267, VCTK_p268, VCTK_p269, VCTK_p270, VCTK_p271, VCTK_p272, VCTK_p273, VCTK_p274, VCTK_p275, VCTK_p276, VCTK_p277, VCTK_p278, VCTK_p279, VCTK_p280, VCTK_p281, VCTK_p282, VCTK_p283, VCTK_p284, VCTK_p285, VCTK_p286, VCTK_p287, VCTK_p288, VCTK_p292, VCTK_p293, VCTK_p295, VCTK_p297, VCTK_p298, VCTK_p299, VCTK_p300, VCTK_p301, VCTK_p303, VCTK_p304, VCTK_p305, VCTK_p306, VCTK_p307, VCTK_p308, VCTK_p310, VCTK_p311, VCTK_p312, VCTK_p313, VCTK_p314, VCTK_p316, VCTK_p317, VCTK_p318, VCTK_p323, VCTK_p329, VCTK_p330, VCTK_p333, VCTK_p334, VCTK_p336, VCTK_p339, VCTK_p340, VCTK_p341, VCTK_p343, VCTK_p345, VCTK_p351, VCTK_p360, VCTK_p361, VCTK_p362, VCTK_p363, VCTK_p364, VCTK_p374, VCTK_p376
+ > Using model: glow_tts
+num Chars:  134
+ > Partial model initialization.
+ | > 542 / 543 layers are restored.
+ > Model restored from step 49131
+
+ > Model has 33562897 parameters
+ > Data depended initialization ... 
+
+[4m[1m > EPOCH: 0/10000[0m
+
+ > DataLoader initialization
+ | > Use phonemes: True
+   | > phoneme language: en
+ | > Number of instances : 39441
+ | > Max length sequence: 181
+ | > Min length sequence: 9
+ | > Avg length sequence: 39.618924469460715
+ | > Num. instances discarded by max-min (max=500, min=2) seq limits: 0
+ | > Batch group size: 0.
+
+[1m > TRAINING (2020-10-27 19:26:05) [0m
+/opt/conda/lib/python3.6/site-packages/torch/optim/lr_scheduler.py:123: UserWarning: Detected call of `lr_scheduler.step()` before `optimizer.step()`. In PyTorch 1.1.0 and later, you should call them in the opposite order: `optimizer.step()` before `lr_scheduler.step()`.  Failure to do this will result in PyTorch skipping the first value of the learning rate schedule. See more details at https://pytorch.org/docs/stable/optim.html#how-to-adjust-learning-rate
+  "https://pytorch.org/docs/stable/optim.html#how-to-adjust-learning-rate", UserWarning)
+Traceback (most recent call last):
+  File "TTS/bin/train_glow_tts.py", line 636, in <module>
+    main(args)
+  File "TTS/bin/train_glow_tts.py", line 547, in main
+    epoch, amp, speaker_mapping)
+  File "TTS/bin/train_glow_tts.py", line 201, in train
+    optimizer.step()
+  File "/opt/conda/lib/python3.6/site-packages/torch/optim/lr_scheduler.py", line 67, in wrapper
+    return wrapped(*args, **kwargs)
+  File "/mnt/voice-cloning/glowtts/TTS/TTS/utils/radam.py", line 61, in step
+    exp_avg_sq.mul_(beta2).addcmul_(grad, grad, value=1 - beta2)
+RuntimeError: The size of tensor a (133) must match the size of tensor b (134) at non-singleton dimension 0
+ ! Run is removed from ../checkpoints-glowtts-zeroshot-blank-token-new/glow-tts-multispeaker-October-27-2020_07+25PM-89e9bfe
+
+[1m   --> STEP: 118/328 -- GLOBAL_STEP: 49250[0m
+     | > loss: nan  (nan)
+     | > log_mle: nan  (nan)
+     | > loss_dur: nan  (nan)
+     | > align_error: 0.18116  (0.16971)
+     | > avg_spec_length: 165.6
+     | > avg_text_length: 56.5
+     | > step_time: 11.1144
+     | > loader_time: 17.63
+     | > current_lr: 0.00028498819995163854
+
+[1m   --> STEP: 143/328 -- GLOBAL_STEP: 49275[0m
+     | > loss: nan  (nan)
+     | > log_mle: nan  (nan)
+     | > loss_dur: nan  (nan)
+     | > align_error: 0.11594  (0.16727)
+     | > avg_spec_length: 172.7
+     | > avg_text_length: 61.0
+     | > step_time: 10.3643
+     | > loader_time: 14.22
+     | > current_lr: 0.00028491589544712547

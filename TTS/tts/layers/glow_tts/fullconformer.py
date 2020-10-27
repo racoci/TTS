@@ -5,6 +5,16 @@ from torch.nn import functional as F
 
 from TTS.tts.layers.glow_tts.glow import LayerNorm
 
+
+
+class Mish(nn.Module):
+    """ Implementation for Mish activation Function: https://www.bmvc2020-conference.com/assets/papers/0928.pdf"""
+    def __init__(self):
+        super().__init__()
+    def forward(self, x):
+        return x * torch.tanh(F.softplus(x))
+
+
 class RelativePositionMultiHeadAttention(nn.Module):
     """Implementation of Relative Position Encoding based on
     https://arxiv.org/pdf/1809.04281.pdf
@@ -41,13 +51,13 @@ class RelativePositionMultiHeadAttention(nn.Module):
         self.dropout = nn.Dropout(dropout_p)
         # relative positional encoding layers
         if rel_attn_window_size is not None:
-            n_heads_rel = 1 if heads_share else num_heads
+            num_heads_rel = 1 if heads_share else num_heads
             rel_stddev = self.k_channels**-0.5
             emb_rel_k = nn.Parameter(
-                torch.randn(n_heads_rel, rel_attn_window_size * 2 + 1,
+                torch.randn(num_heads_rel, rel_attn_window_size * 2 + 1,
                             self.k_channels) * rel_stddev)
             emb_rel_v = nn.Parameter(
-                torch.randn(n_heads_rel, rel_attn_window_size * 2 + 1,
+                torch.randn(num_heads_rel, rel_attn_window_size * 2 + 1,
                             self.k_channels) * rel_stddev)
             self.register_parameter('emb_rel_k', emb_rel_k)
             self.register_parameter('emb_rel_v', emb_rel_v)
@@ -223,7 +233,6 @@ class RelativePositionMultiHeadAttention(nn.Module):
         # 1 x 1 x L x L
         return diff.unsqueeze(0).unsqueeze(0)
 
-
 class FFN(nn.Module):
     def __init__(self,
                  in_channels,
@@ -249,19 +258,182 @@ class FFN(nn.Module):
                                 kernel_size,
                                 padding=kernel_size // 2)
         self.dropout = nn.Dropout(dropout_p)
-
+                # init layers
+        nn.init.xavier_uniform_(self.conv_1.weight)
+        nn.init.xavier_uniform_(self.conv_2.weight)
     def forward(self, x, x_mask):
+        # print(x_mask)
         x = self.conv_1(x * x_mask)
         if self.activation == "gelu":
             x = x * torch.sigmoid(1.702 * x)
+        elif self.activation == "mish":
+            x = x * torch.tanh(F.softplus(x))
         else:
             x = torch.relu(x)
+
         x = self.dropout(x)
         x = self.conv_2(x * x_mask)
         return x * x_mask
 
 
-class Transformer(nn.Module):
+
+class ConformerConvModule(nn.Module):
+    """A single convolution module for the Conformer.
+    Args:
+        in_out_dim (int): input and output dimension
+        kernel_size (int): kernel size in depthwise convolution
+    """
+
+    def __init__(self, in_out_dim, kernel_size=2, activation='mish', causal=False):
+        super().__init__()
+        self.kernel_size = kernel_size
+
+        assert (self.kernel_size  - 1) % 2 == 0, 'kernel_size must be the odd number.'
+
+        if causal:
+            self.padding = nn.ConstantPad1d((kernel_size - 1, 0), 0)
+        else:
+            self.padding = None
+
+        self.pointwise_layer = nn.Conv1d(in_channels=in_out_dim,
+                                         out_channels=in_out_dim * 2,
+                                         kernel_size=1,
+                                         stride=1,
+                                         padding=0)
+        self.depthwise_layer = nn.Conv1d(in_channels=in_out_dim,
+                                        out_channels=in_out_dim,
+                                        kernel_size=kernel_size,
+                                        stride=1,
+                                        padding=(kernel_size - 1) // 2,
+                                        groups=in_out_dim)
+        self.bn = nn.BatchNorm1d(in_out_dim)
+
+        self.pointwise_layer2 = nn.Conv1d(in_channels=in_out_dim,
+                                         out_channels=in_out_dim,
+                                         kernel_size=1,
+                                         stride=1,
+                                         padding=0)               
+        if activation == 'relu':
+            self.activation = torch.relu
+        elif activation == 'mish':
+            self.activation = Mish()
+        else:
+            raise NotImplementedError(activation)
+
+        nn.init.xavier_uniform_(self.pointwise_layer.weight)
+        nn.init.xavier_uniform_(self.depthwise_layer.weight)
+        nn.init.xavier_uniform_(self.pointwise_layer2.weight)
+
+    def forward(self, x):
+        """
+        Args:
+            x (FloatTensor): [B, in_out_dim, T]
+        Returns:
+            x (FloatTensor): [B, in_out_dim, T]
+        """
+        if self.padding is not None:
+            x = self.padding(x)
+            x = x[:, :, :-(self.kernel_size - 1)]
+
+        x = self.pointwise_layer(x)  # [B, 2 * C, T]
+        x = x.transpose(2, 1)  # [B, T, 2 * C]
+        x = F.glu(x)  # [B, T, C]
+
+        x = x.transpose(2, 1).contiguous()  # [B, C, T]
+
+        x = self.depthwise_layer(x)  # [B, C, T]
+
+        x = self.bn(x)
+        x = self.activation(x)
+        x = self.pointwise_layer2(x)  # [B, C, T]
+
+        return x
+
+class FullConformerBlock(nn.Module):
+    """A single block of the Full Convolutional Conformer (Conformer paper: https://arxiv.org/pdf/2005.08100.pdf).
+    Improviments:
+    We do not use TransformerXL embedding position. We chose to use Relative Positional MultiHead Attention based on https://arxiv.org/pdf/1809.04281.pdf
+    In addition, we replaced the fully connected FFN by a FFN based on convolutional layers (proposed at: https://www.aaai.org/ojs/index.php/AAAI/article/view/4642/4520)
+   
+    Args:
+        hidden_channels (int): input dimension of MultiheadAttentionMechanism and PositionwiseFeedForward
+        d_ff (int): hidden dimension of PositionwiseFeedForward
+        num_heads (int): number of heads for multi-head attention
+        kernel_size (int): kernel size for depthwise convolution in convolution module
+        dropout (float): dropout probabilities for linear layers
+        dropout_att (float): dropout probabilities for attention distributions
+        ffn_activation (str): nonolinear function for PositionwiseFeedForward
+    """
+
+    def __init__(self, hidden_channels, d_ff=1024, filter_channels=256, num_heads=4, kernel_size=3,
+                 dropout=0.1, dropout_att=0.1, ffn_activation='mish', rel_attn_window_size=None, input_length=None):
+        super(FullConformerBlock, self).__init__()
+
+        self.num_heads = num_heads
+        self.fc_factor = 0.5
+
+        # first half position-wise feed-forward
+        #self.norm1 = LayerNorm(hidden_channels)
+        self.feed_forward_macaron = FFN(hidden_channels, d_ff, filter_channels, kernel_size, dropout_p=dropout, activation=ffn_activation)
+        # self-attention
+        self.norm2 = LayerNorm(hidden_channels)
+        self.self_attn = RelativePositionMultiHeadAttention(hidden_channels, hidden_channels, num_heads, rel_attn_window_size=rel_attn_window_size, dropout_p=dropout_att, input_length=input_length)
+        # conv module
+        self.norm3 = LayerNorm(hidden_channels)
+        self.conv = ConformerConvModule(hidden_channels, kernel_size, causal=True)
+
+        # second half position-wise feed-forward
+        self.norm4 = LayerNorm(hidden_channels)
+        self.feed_forward = FFN(hidden_channels, d_ff, filter_channels, kernel_size, dropout_p=dropout, activation=ffn_activation)
+        self.norm5 = LayerNorm(hidden_channels)
+
+        self.dropout = nn.Dropout(dropout)
+
+        self.reset_visualization()
+
+    @property
+    def xx_aws(self):
+        return self._xx_aws
+
+    def reset_visualization(self):
+        self._xx_aws = None
+
+    def forward(self, x, attn_mask=None, x_mask=None):
+        """Conformer encoder layer definition.
+        Args:
+            x (FloatTensor): [B, T, hidden_channels]
+            attn_mask (ByteTensor): [B, T (query), T (key)]
+        Returns:
+            x (FloatTensor): [B, T, hidden_channels]
+        """
+        self.reset_visualization()
+        # first half FFN
+        residual = x
+        # x = self.norm1(x)
+        x = self.feed_forward_macaron(x, x_mask)
+        x = self.fc_factor * self.dropout(x) + residual  # Macaron FFN
+
+        # self-attention w/ relative positional encoding
+        residual = x
+        x = self.norm2(x)
+        x = self.self_attn(x, x, attn_mask)
+        x = self.dropout(x) + residual
+        # conv
+        residual = x
+        x = self.norm3(x)
+        x = self.conv(x)
+        x = self.dropout(x) + residual
+
+        # second half FFN
+        residual = x
+        x = self.norm4(x)
+        x = self.feed_forward(x, x_mask)
+        x = self.fc_factor * self.dropout(x) + residual  # Macaron FFN
+        x = self.norm5(x)  # this is important for performance
+
+        return x
+
+class FullConformer(nn.Module):
     def __init__(self,
                  hidden_channels,
                  filter_channels,
@@ -271,7 +443,7 @@ class Transformer(nn.Module):
                  dropout_p=0.,
                  rel_attn_window_size=None,
                  input_length=None):
-        super().__init__()
+        super(FullConformer, self).__init__()
         self.hidden_channels = hidden_channels
         self.filter_channels = filter_channels
         self.num_heads = num_heads
@@ -280,39 +452,15 @@ class Transformer(nn.Module):
         self.dropout_p = dropout_p
         self.rel_attn_window_size = rel_attn_window_size
 
-        self.dropout = nn.Dropout(dropout_p)
-        self.attn_layers = nn.ModuleList()
-        self.norm_layers_1 = nn.ModuleList()
-        self.ffn_layers = nn.ModuleList()
-        self.norm_layers_2 = nn.ModuleList()
+        self.conformers = nn.ModuleList()
         for _ in range(self.num_layers):
-            self.attn_layers.append(
-                RelativePositionMultiHeadAttention(
-                    hidden_channels,
-                    hidden_channels,
-                    num_heads,
-                    rel_attn_window_size=rel_attn_window_size,
-                    dropout_p=dropout_p,
-                    input_length=input_length))
-            self.norm_layers_1.append(LayerNorm(hidden_channels))
-            self.ffn_layers.append(
-                FFN(hidden_channels,
-                    hidden_channels,
-                    filter_channels,
-                    kernel_size,
-                    dropout_p=dropout_p))
-            self.norm_layers_2.append(LayerNorm(hidden_channels))
+            self.conformers.append(FullConformerBlock(hidden_channels, d_ff=filter_channels, num_heads=num_heads, kernel_size=kernel_size,
+                 dropout=dropout_p, dropout_att=dropout_p, ffn_activation='mish', rel_attn_window_size=rel_attn_window_size, input_length=input_length)) 
 
     def forward(self, x, x_mask):
         attn_mask = x_mask.unsqueeze(2) * x_mask.unsqueeze(-1)
         for i in range(self.num_layers):
             x = x * x_mask
-            y = self.attn_layers[i](x, x, attn_mask)
-            y = self.dropout(y)
-            x = self.norm_layers_1[i](x + y)
-
-            y = self.ffn_layers[i](x, x_mask)
-            y = self.dropout(y)
-            x = self.norm_layers_2[i](x + y)
+            x = self.conformers[i](x, attn_mask, x_mask)
         x = x * x_mask
         return x

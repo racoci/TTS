@@ -3,6 +3,8 @@ import torch
 from torch import nn
 
 from TTS.tts.layers.glow_tts.transformer import Transformer
+from TTS.tts.layers.glow_tts.conformer import Conformer
+from TTS.tts.layers.glow_tts.fullconformer import FullConformer
 from TTS.tts.layers.glow_tts.gated_conv import GatedConvBlock
 from TTS.tts.utils.generic_utils import sequence_mask
 from TTS.tts.layers.glow_tts.glow import ConvLayerNorm
@@ -48,6 +50,7 @@ class Encoder(nn.Module):
                  c_in_channels=0):
         super().__init__()
         # class arguments
+        print('num Chars: ', num_chars)
         self.num_chars = num_chars
         self.out_channels = out_channels
         self.hidden_channels = hidden_channels
@@ -84,6 +87,45 @@ class Encoder(nn.Module):
                 dropout_p=dropout_p,
                 rel_attn_window_size=rel_attn_window_size,
                 input_length=input_length)
+
+        elif encoder_type.lower() == "fullconformer":
+            # optional convolutional prenet
+            if use_prenet:
+                self.pre = ConvLayerNorm(hidden_channels,
+                                         hidden_channels,
+                                         hidden_channels,
+                                         kernel_size=5,
+                                         num_layers=3,
+                                         dropout_p=0.5)
+            # text encoder
+            self.encoder = FullConformer(
+                hidden_channels,
+                filter_channels,
+                num_heads,
+                num_layers,
+                kernel_size=kernel_size,
+                dropout_p=dropout_p,
+                rel_attn_window_size=rel_attn_window_size,
+                input_length=input_length)
+
+        elif encoder_type.lower() == "conformer":
+            # optional convolutional prenet
+            if use_prenet:
+                self.pre = ConvLayerNorm(hidden_channels,
+                                         hidden_channels,
+                                         hidden_channels,
+                                         kernel_size=5,
+                                         num_layers=3,
+                                         dropout_p=0.5)
+            # text encoder
+            self.encoder = Conformer(
+                hidden_channels,
+                filter_channels,
+                num_heads,
+                num_layers,
+                kernel_size=kernel_size,
+                dropout_p=dropout_p)
+            
         elif encoder_type.lower() == 'gatedconv':
             self.encoder = GatedConvBlock(hidden_channels,
                                           kernel_size=5,

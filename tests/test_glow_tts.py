@@ -3,6 +3,12 @@ import os
 import unittest
 
 import torch
+torch.manual_seed(0)
+torch.backends.cudnn.deterministic = True
+torch.backends.cudnn.benchmark = False
+import numpy as np
+np.random.seed(0)
+
 from tests import get_tests_input_path
 from torch import optim
 
@@ -10,6 +16,7 @@ from TTS.tts.layers.losses import GlowTTSLoss
 from TTS.tts.models.glow_tts import GlowTts
 from TTS.utils.io import load_config
 from TTS.utils.audio import AudioProcessor
+
 
 #pylint: disable=unused-variable
 
@@ -43,7 +50,7 @@ class GlowTTSTrainTest(unittest.TestCase):
 
         # model to train
         model = GlowTts(num_chars=32,
-                        hidden_channels=128,
+                        hidden_channels=32,
                         filter_channels=32,
                         filter_channels_dp=32,
                         out_channels=80,
@@ -71,7 +78,7 @@ class GlowTTSTrainTest(unittest.TestCase):
 
         # reference model to compare model weights
         model_ref = GlowTts(num_chars=32,
-                            hidden_channels=128,
+                            hidden_channels=32,
                             filter_channels=32,
                             filter_channels_dp=32,
                             out_channels=80,
@@ -128,4 +135,114 @@ class GlowTTSTrainTest(unittest.TestCase):
             assert (param != param_ref).any(
             ), "param {} with shape {} not updated!! \n{}\n{}".format(
                 count, param.shape, param, param_ref)
+            count += 1
+
+
+
+class ConformerGlowTTSTrainTest(unittest.TestCase):
+    @staticmethod
+    def test_train_step():
+        input_dummy = torch.randint(0, 24, (8, 128)).long().to(device)
+        input_lengths = torch.randint(100, 129, (8, )).long().to(device)
+        input_lengths[-1] = 128
+        mel_spec = torch.rand(8, c.audio['num_mels'], 30).to(device)
+        linear_spec = torch.rand(8, 30, c.audio['fft_size']).to(device)
+        mel_lengths = torch.randint(20, 30, (8, )).long().to(device)
+        speaker_ids = torch.randint(0, 5, (8, )).long().to(device)
+
+        #print(input_dummy)
+        criterion = criterion = GlowTTSLoss()
+
+        # model to train
+        model = GlowTts(num_chars=32,
+                        hidden_channels=32,
+                        filter_channels=32,
+                        filter_channels_dp=32,
+                        out_channels=80,
+                        kernel_size=3,
+                        num_heads=2,
+                        num_layers_enc=6,
+                        dropout_p=0.1,
+                        num_flow_blocks_dec=12,
+                        kernel_size_dec=5,
+                        dilation_rate=5,
+                        num_block_layers=4,
+                        dropout_p_dec=0.,
+                        num_speakers=0,
+                        c_in_channels=0,
+                        num_splits=4,
+                        num_sqz=1,
+                        sigmoid_scale=False,
+                        rel_attn_window_size=None,
+                        input_length=None,
+                        mean_only=False,
+                        hidden_channels_enc=None,
+                        hidden_channels_dec=None,
+                        use_encoder_prenet=False,
+                        encoder_type="fullconformer").to(device)
+
+        # reference model to compare model weights
+        model_ref = GlowTts(num_chars=32,
+                            hidden_channels=32,
+                            filter_channels=32,
+                            filter_channels_dp=32,
+                            out_channels=80,
+                            kernel_size=3,
+                            num_heads=2,
+                            num_layers_enc=6,
+                            dropout_p=0.1,
+                            num_flow_blocks_dec=12,
+                            kernel_size_dec=5,
+                            dilation_rate=5,
+                            num_block_layers=4,
+                            dropout_p_dec=0.,
+                            num_speakers=0,
+                            c_in_channels=0,
+                            num_splits=4,
+                            num_sqz=1,
+                            sigmoid_scale=False,
+                            rel_attn_window_size=None,
+                            input_length=None,
+                            mean_only=False,
+                            hidden_channels_enc=None,
+                            hidden_channels_dec=None,
+                            use_encoder_prenet=False,
+                            encoder_type="fullconformer").to(device)
+
+        model.train()
+        print(" > Num parameters for GlowTTS model:%s" %
+              (count_parameters(model)))
+
+        # pass the state to ref model
+        model_ref.load_state_dict(copy.deepcopy(model.state_dict()))
+
+        count = 0
+        for param, param_ref in zip(model.parameters(),
+                                    model_ref.parameters()):
+            assert (param - param_ref).sum() == 0, param
+            count += 1
+
+        optimizer = optim.Adam(model.parameters(), lr=c.lr)
+        for _ in range(5):
+            z, logdet, y_mean, y_log_scale, alignments, o_dur_log, o_total_dur = model.forward(
+                input_dummy, input_lengths, mel_spec, mel_lengths, None)
+            optimizer.zero_grad()
+            loss_dict = criterion(z, y_mean, y_log_scale, logdet, mel_lengths,
+                                  o_dur_log, o_total_dur, input_lengths)
+            loss = loss_dict['loss']
+            loss.backward()
+            optimizer.step()
+
+
+        # check parameter changes
+        count = 0
+        for name_param, param_ref in zip(model.named_parameters(),
+                                         model_ref.parameters()):
+            name, param = name_param
+            assert (param != param_ref).any(
+            ), "param {} with shape {}  and name {} not updated!! \n{}\n{}".format(
+                count, param.shape, name, param, param_ref)
+            '''if (param == param_ref).any():
+                print("param {} with shape {} not updated!! \n{}\n{}".format(count, name, param.shape, param, param_ref))'''
+
             count += 1
