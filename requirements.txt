@@ -6,6 +6,7 @@ numba==0.48
 librosa==0.7.2
 phonemizer>=2.2.0
 unidecode==0.4.20
+pyworld==0.2.12
 attrdict
 tensorboardX
 matplotlib
