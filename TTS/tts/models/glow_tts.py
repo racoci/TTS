@@ -169,6 +169,61 @@ class GlowTts(nn.Module):
         return z, logdet, y_mean, y_log_scale, attn, o_dur_log, o_attn_dur
 
     @torch.no_grad()
+    def inference_with_lenghts(self, x, x_lengths, y=None, y_lengths=None, attn=None, g=None):
+        """
+            Shapes:
+                x: B x T
+                x_lenghts: B
+                y: B x C x T
+                y_lengths: B
+        """
+        y_max_length = y.size(2)
+        # norm speaker embeddings
+        if g is not None:
+            if self.external_speaker_embedding_dim:
+                g = F.normalize(g).unsqueeze(-1)
+            else:
+                g = F.normalize(self.emb_g(g)).unsqueeze(-1)# [b, h]
+
+        # embedding pass
+        o_mean, o_log_scale, o_dur_log, x_mask = self.encoder(x,
+                                                              x_lengths,
+                                                              g=g)
+        # format feature vectors and feature vector lenghts
+        y, y_lengths, y_max_length, attn = self.preprocess(
+            y, y_lengths, y_max_length, None)
+        # create masks
+        y_mask = torch.unsqueeze(sequence_mask(y_lengths, y_max_length),
+                                 1).to(x_mask.dtype)
+        attn_mask = torch.unsqueeze(x_mask, -1) * torch.unsqueeze(y_mask, 2)
+        # decoder pass
+        z, logdet = self.decoder(y, y_mask, g=g, reverse=False)
+        # find the alignment path
+        with torch.no_grad():
+            o_scale = torch.exp(-2 * o_log_scale)
+            logp1 = torch.sum(-0.5 * math.log(2 * math.pi) - o_log_scale,
+                              [1]).unsqueeze(-1)  # [b, t, 1]
+            logp2 = torch.matmul(o_scale.transpose(1, 2), -0.5 *
+                                 (z**2))  # [b, t, d] x [b, d, t'] = [b, t, t']
+            logp3 = torch.matmul((o_mean * o_scale).transpose(1, 2),
+                                 z)  # [b, t, d] x [b, d, t'] = [b, t, t']
+            logp4 = torch.sum(-0.5 * (o_mean**2) * o_scale,
+                              [1]).unsqueeze(-1)  # [b, t, 1]
+            logp = logp1 + logp2 + logp3 + logp4  # [b, t, t']
+            attn = maximum_path(logp,
+                                attn_mask.squeeze(1)).unsqueeze(1).detach()
+        y_mean, y_log_scale, o_attn_dur = self.compute_outputs(
+            attn, o_mean, o_log_scale, x_mask)
+
+        # z = (y_mean + torch.exp(y_log_scale) * torch.randn_like(y_mean) * self.noise_scale) * y_mask
+        # its the same than self.noise_scale=0
+        z = y_mean * y_mask
+        # decoder pass
+        y, logdet = self.decoder(z, y_mask, g=g, reverse=True)
+        attn = attn.squeeze(1).permute(0, 2, 1)
+        return y, logdet, y_mean, y_log_scale, attn, o_dur_log, o_attn_dur
+
+    @torch.no_grad()
     def inference(self, x, x_lengths, g=None):
 
         if g is not None:
@@ -201,6 +256,7 @@ class GlowTts(nn.Module):
         y, logdet = self.decoder(z, y_mask, g=g, reverse=True)
         attn = attn.squeeze(1).permute(0, 2, 1)
         return y, logdet, y_mean, y_log_scale, attn, o_dur_log, o_attn_dur
+
 
     def preprocess(self, y, y_lengths, y_max_length, attn=None):
         if y_max_length is not None:

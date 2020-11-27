@@ -73,7 +73,7 @@ class ConvResidualBlocks(nn.Module):
         kernel_size (int): convolution kernel size.
         dilations (list): Residual Block dilation, its control number block too
     """
-    def __init__(self, in_out_channels=128, kernel_size=4, dilations=4*[1,2,4]+[1], apply_mask=True):
+    def __init__(self, in_out_channels=128, kernel_size=4, dilations=4*[1,2,4]+[1], apply_mask=False):
         super().__init__()
 
         self.apply_mask = apply_mask

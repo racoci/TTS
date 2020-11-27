@@ -7,6 +7,7 @@ import os
 import sys
 import time
 import traceback
+import numpy as np
 
 import torch
 from random import randrange
@@ -58,7 +59,28 @@ def setup_loader(ap, r, is_val=False, verbose=False, speaker_mapping=None):
             enable_eos_bos=c.enable_eos_bos_chars,
             verbose=verbose,
             speaker_mapping=speaker_mapping if c.use_speaker_embedding and c.use_external_speaker_embedding_file else None)
+        
         sampler = DistributedSampler(dataset) if num_gpus > 1 else None
+
+        if c.speaker_balancer_batch and num_gpus <= 1 and not is_val:
+            # get speakers names
+            speaker_names = np.array([item[2] for item in dataset.items])
+            # print(speaker_names)
+            unique_speaker_names = np.unique(speaker_names).tolist()
+            speaker_ids = [unique_speaker_names.index(s) for s in speaker_names]
+
+            # count number samples by speaker
+            speaker_count = np.array([len(np.where(speaker_names == s)[0]) for s in unique_speaker_names])
+
+            # create weight
+            weight = 1. / speaker_count
+            samples_weight = np.array([weight[s] for s in speaker_ids])
+            samples_weight = torch.from_numpy(samples_weight).double()
+            
+            # create sampler
+            sampler = torch.utils.data.sampler.WeightedRandomSampler(samples_weight, len(samples_weight))
+                
+
         loader = DataLoader(
             dataset,
             batch_size=c.eval_batch_size if is_val else c.batch_size,
@@ -69,6 +91,16 @@ def setup_loader(ap, r, is_val=False, verbose=False, speaker_mapping=None):
             num_workers=c.num_val_loader_workers
             if is_val else c.num_loader_workers,
             pin_memory=False)
+        '''
+        # test loader
+        for _, data in enumerate(loader):
+            # format data
+            speaker_ids = np.array(data[2])
+            freqs = [len(np.where(speaker_ids == s_id)[0] ) for s_id in unique_speaker_names]
+            print(speaker_ids[0], freqs)
+        
+        exit()'''
+
     return loader
 
 

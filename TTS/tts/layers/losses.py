@@ -262,8 +262,10 @@ class TacotronLoss(torch.nn.Module):
 
         # double decoder consistency loss (if enabled)
         if self.config.double_decoder_consistency:
-            decoder_b_loss = self.criterion(decoder_b_output, mel_input,
-                                            output_lens)
+            if self.config.loss_masking:
+                decoder_b_loss = self.criterion(decoder_b_output, mel_input, output_lens)
+            else:
+                decoder_b_loss = self.criterion(decoder_b_output, mel_input)
             # decoder_c_loss = torch.nn.functional.l1_loss(decoder_b_output, decoder_output)
             attention_c_loss = torch.nn.functional.l1_loss(alignments, alignments_backwards)
             loss += self.decoder_alpha * (decoder_b_loss + attention_c_loss)
@@ -293,6 +295,7 @@ class GlowTTSLoss(torch.nn.Module):
     def forward(self, z, means, scales, log_det, y_lengths, o_dur_log,
                 o_attn_dur, x_lengths):
         return_dict = {}
+
         # flow loss - neg log likelihood
         pz = torch.sum(scales) + 0.5 * torch.sum(
             torch.exp(-2 * scales) * (z - means)**2)
