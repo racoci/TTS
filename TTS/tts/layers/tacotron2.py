@@ -339,7 +339,6 @@ class Decoder(nn.Module):
             inputs: Encoder outputs.
 
         Shapes:
-            - inputs: (B, T, D_out_enc)
             - outputs: (B, T_mel, D_mel)
             - alignments: (B, T_in, T_out)
             - stop_tokens: (B, T_out)
@@ -350,7 +349,8 @@ class Decoder(nn.Module):
         self._init_states(inputs, mask=None)
         self.attention.init_states(inputs)
 
-        outputs, stop_tokens, alignments, t = [], [], [], 0
+
+        outputs, stop_tokens, alignments, t, alignment_count = [], [], [], 0, 0
         while True:
             memory = self.prenet(memory)
             decoder_output, alignment, stop_token = self.decode(memory)
@@ -364,6 +364,12 @@ class Decoder(nn.Module):
             if len(outputs) == self.max_decoder_steps:
                 print("   | > Decoder stopped with 'max_decoder_steps")
                 break
+
+            if torch.all(alignment.argmax(dim=1) == alignment.size(1)-1):
+                alignment_count += 1
+                if alignment_count > 2:
+                    print("   | > Decoder stopped with attention alignments")
+                    break
 
             memory = self._update_memory(decoder_output)
             t += 1

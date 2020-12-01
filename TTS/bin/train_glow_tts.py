@@ -61,11 +61,12 @@ def setup_loader(ap, r, is_val=False, verbose=False, speaker_mapping=None):
             speaker_mapping=speaker_mapping if c.use_speaker_embedding and c.use_external_speaker_embedding_file else None)
         
         sampler = DistributedSampler(dataset) if num_gpus > 1 else None
-
-        if c.speaker_balancer_batch and num_gpus <= 1 and not is_val:
+        
+        if getattr(c, "speaker_balancer_batch", False) and sampler is None and not is_val:
+            print("Using Speaker Balancer Batch")
             # get speakers names
             speaker_names = np.array([item[2] for item in dataset.items])
-            # print(speaker_names)
+
             unique_speaker_names = np.unique(speaker_names).tolist()
             speaker_ids = [unique_speaker_names.index(s) for s in speaker_names]
 
@@ -75,11 +76,9 @@ def setup_loader(ap, r, is_val=False, verbose=False, speaker_mapping=None):
             # create weight
             weight = 1. / speaker_count
             samples_weight = np.array([weight[s] for s in speaker_ids])
-            samples_weight = torch.from_numpy(samples_weight).double()
-            
+            speakers_dataset_samples_weight = torch.from_numpy(samples_weight).double()
             # create sampler
-            sampler = torch.utils.data.sampler.WeightedRandomSampler(samples_weight, len(samples_weight))
-                
+            sampler = torch.utils.data.sampler.WeightedRandomSampler(speakers_dataset_samples_weight, len(speakers_dataset_samples_weight)) 
 
         loader = DataLoader(
             dataset,
@@ -91,9 +90,9 @@ def setup_loader(ap, r, is_val=False, verbose=False, speaker_mapping=None):
             num_workers=c.num_val_loader_workers
             if is_val else c.num_loader_workers,
             pin_memory=False)
-        '''
+        
         # test loader
-        for _, data in enumerate(loader):
+        '''for _, data in enumerate(loader):
             # format data
             speaker_ids = np.array(data[2])
             freqs = [len(np.where(speaker_ids == s_id)[0] ) for s_id in unique_speaker_names]
@@ -103,10 +102,7 @@ def setup_loader(ap, r, is_val=False, verbose=False, speaker_mapping=None):
 
     return loader
 
-
-def format_data(data):
-    if c.use_speaker_embedding:
-        speaker_mapping = load_speaker_mapping(OUT_PATH)
+def format_data(data, speaker_mapping=None):
 
     # setup input data
     text_input = data[0]
@@ -162,7 +158,7 @@ def data_depended_init(model, ap, speaker_mapping=None):
 
             # format data
             text_input, text_lengths, mel_input, mel_lengths, speaker_ids,\
-                _, _, attn_mask = format_data(data)
+                _, _, attn_mask = format_data(data, speaker_mapping=speaker_mapping)
 
             # forward pass model
             _ = model.forward(
@@ -180,10 +176,8 @@ def data_depended_init(model, ap, speaker_mapping=None):
     return model
 
 
-def train(model, criterion, optimizer, scheduler,
+def train(model, data_loader, criterion, optimizer, scheduler,
           ap, global_step, epoch, amp, speaker_mapping=None):
-    data_loader = setup_loader(ap, 1, is_val=False,
-                               verbose=(epoch == 0), speaker_mapping=speaker_mapping)
     model.train()
     epoch_time = 0
     keep_avg = KeepAverage()
@@ -199,7 +193,7 @@ def train(model, criterion, optimizer, scheduler,
 
         # format data
         text_input, text_lengths, mel_input, mel_lengths, speaker_ids,\
-            avg_text_length, avg_spec_length, attn_mask = format_data(data)
+            avg_text_length, avg_spec_length, attn_mask = format_data(data, speaker_mapping=speaker_mapping)
 
         loader_time = time.time() - end_time
 
@@ -334,8 +328,7 @@ def train(model, criterion, optimizer, scheduler,
 
 
 @torch.no_grad()
-def evaluate(model, criterion, ap, global_step, epoch, speaker_mapping):
-    data_loader = setup_loader(ap, 1, is_val=True, speaker_mapping=speaker_mapping)
+def evaluate(model, data_loader, criterion, ap, global_step, epoch, speaker_mapping):
     model.eval()
     epoch_time = 0
     keep_avg = KeepAverage()
@@ -346,7 +339,7 @@ def evaluate(model, criterion, ap, global_step, epoch, speaker_mapping):
 
             # format data
             text_input, text_lengths, mel_input, mel_lengths, speaker_ids,\
-                _, _, attn_mask = format_data(data)
+                _, _, attn_mask = format_data(data, speaker_mapping=speaker_mapping)
 
             # forward pass model
             z, logdet, y_mean, y_log_scale, alignments, o_dur_log, o_total_dur = model.forward(
@@ -527,7 +520,8 @@ def main(args):  # pylint: disable=redefined-outer-name
         try:
             # TODO: fix optimizer init, model.cuda() needs to be called before
             # optimizer restore
-            optimizer.load_state_dict(checkpoint['optimizer'])
+            if not c.noam_schedule:
+                optimizer.load_state_dict(checkpoint['optimizer'])
             if c.reinit_layers:
                 raise RuntimeError
             model.load_state_dict(checkpoint['model'])
@@ -571,13 +565,20 @@ def main(args):  # pylint: disable=redefined-outer-name
         best_loss = float('inf')
 
     global_step = args.restore_step
-    model = data_depended_init(model, ap, speaker_mapping)
+    # ignore data depend inicialization if continue training
+    if global_step == 0:
+        model = data_depended_init(model, ap, speaker_mapping)
+
+    train_data_loader = setup_loader(ap, 1, is_val=False,
+                               verbose=True, speaker_mapping=speaker_mapping)
+    eval_data_loader = setup_loader(ap, 1, is_val=True, speaker_mapping=speaker_mapping)
+
     for epoch in range(0, c.epochs):
         c_logger.print_epoch_start(epoch, c.epochs)
-        train_avg_loss_dict, global_step = train(model, criterion, optimizer,
+        train_avg_loss_dict, global_step = train(model, train_data_loader, criterion, optimizer,
                                                  scheduler, ap, global_step,
                                                  epoch, amp, speaker_mapping)
-        eval_avg_loss_dict = evaluate(model, criterion, ap, global_step, epoch, speaker_mapping=speaker_mapping)
+        eval_avg_loss_dict = evaluate(model, eval_data_loader, criterion, ap, global_step, epoch, speaker_mapping=speaker_mapping)
         c_logger.print_epoch_end(epoch, eval_avg_loss_dict)
         target_loss = train_avg_loss_dict['avg_loss']
         if c.run_eval:
