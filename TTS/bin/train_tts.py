@@ -441,7 +441,7 @@ def evaluate(model, criterion, ap, global_step, epoch, speaker_mapping=None):
             print("WARNING: You don't provided a gst style wav, for this reason we use a zero tensor!")
             for i in range(c.gst['gst_style_tokens']):
                 style_wav[str(i)] = 0
-        style_wav = c.get("gst_style_input")
+        # style_wav = c.get("gst_style_input")
         for idx, test_sentence in enumerate(test_sentences):
             try:
                 wav, alignment, decoder_output, postnet_output, stop_tokens, _ = synthesis(

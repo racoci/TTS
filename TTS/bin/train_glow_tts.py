@@ -78,7 +78,7 @@ def setup_loader(ap, r, is_val=False, verbose=False, speaker_mapping=None):
             samples_weight = np.array([weight[s] for s in speaker_ids])
             speakers_dataset_samples_weight = torch.from_numpy(samples_weight).double()
             # create sampler
-            sampler = torch.utils.data.sampler.WeightedRandomSampler(speakers_dataset_samples_weight, len(speakers_dataset_samples_weight)) 
+            sampler = torch.utils.data.sampler.WeightedRandomSampler(speakers_dataset_samples_weight, len(speakers_dataset_samples_weight))
 
         loader = DataLoader(
             dataset,
@@ -385,9 +385,9 @@ def evaluate(model, data_loader, criterion, ap, global_step, epoch, speaker_mapp
             # Diagnostic visualizations
             # direct pass on model for spec predictions
             if hasattr(model, 'module'):
-                spec_pred, *_ = model.module.inference(text_input[:1], text_lengths[:1], g=speaker_ids[:1])
+                spec_pred, *_ = model.module.inference(text_input[:1], text_lengths[:1], g=speaker_ids[:1], style_mel=mel_input[:1])
             else:
-                spec_pred, *_ = model.inference(text_input[:1], text_lengths[:1], g=speaker_ids[:1])
+                spec_pred, *_ = model.inference(text_input[:1], text_lengths[:1], g=speaker_ids[:1], style_mel=mel_input[:1])
             spec_pred = spec_pred.permute(0, 2, 1)
             gt_spec = mel_input.permute(0, 2, 1)
 
@@ -439,6 +439,13 @@ def evaluate(model, data_loader, criterion, ap, global_step, epoch, speaker_mapp
             speaker_embedding = None
 
         style_wav = c.get("style_wav_for_test")
+        if style_wav is None and c.use_gst:
+            # inicialize GST with zero dict.
+            style_wav = {}
+            print("WARNING: You don't provided a gst style wav, for this reason we use a zero tensor!")
+            for i in range(c.gst['gst_style_tokens']):
+                style_wav[str(i)] = 0
+
         for idx, test_sentence in enumerate(test_sentences):
             try:
                 wav, alignment, _, postnet_output, _, _ = synthesis(

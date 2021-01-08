@@ -97,15 +97,15 @@ def set_filename(wav_path, out_path):
 
 
 
-OUT_PATH = "../../../hifi-Gan-data/VCTK-Tacotron"
+OUT_PATH = "../../../hifi-Gan-data/VCTK-Tacotron/"
 DATA_PATH = "../../../../datasets/VCTK-Corpus-removed-silence/"
 DATASET = "vctk"
 METADATA_FILE = None
 
 
-CONFIG_PATH = "../../checkpoints-Tacotron2/2136433/tts_config.json"
-MODEL_FILE = "../../checkpoints-Tacotron2/2136433/tts_model.pth.tar"
-SPEAKER_JSON = '../../checkpoints-Tacotron2/2136433/speakers.json'
+CONFIG_PATH = "../../checkpoints-Tacotron2/paper-do-zero/vctk-r=2-ddc-TL-my-model-December-10-2020_08+31PM-2868995/config.json"
+MODEL_FILE = "../../checkpoints-Tacotron2/paper-do-zero/vctk-r=2-ddc-TL-my-model-December-10-2020_08+31PM-2868995/best_model.pth.tar"
+SPEAKER_JSON = '../../checkpoints-Tacotron2/paper-do-zero/vctk-r=2-ddc-TL-my-model-December-10-2020_08+31PM-2868995/speakers.json'
 
 BATCH_SIZE = 32
 
@@ -119,7 +119,7 @@ print(" > CUDA enabled: ", use_cuda)
 C = load_config(CONFIG_PATH)
 C.audio['do_trim_silence'] = False  # IMPORTANT!!!!!!!!!!!!!!! disable to a
 
-C.audio['stats_path'] = '../../checkpoints-Tacotron2/2136433/tts_scale_stats.npy'
+# C.audio['stats_path'] = '../../checkpoints-Tacotron2/2136433/tts_scale_stats.npy'
 ap = AudioProcessor(**C.audio)
 
 
@@ -152,6 +152,10 @@ model = setup_model(num_chars, num_speakers, C, speaker_embedding_dim)
 model, checkpoint =  load_checkpoint(model, MODEL_FILE, use_cuda=use_cuda)
 model.eval()
 model.decoder.set_r(checkpoint['r'])
+
+# set config r
+C.r = checkpoint['r']
+
 if use_cuda:
     model = model.cuda()
 

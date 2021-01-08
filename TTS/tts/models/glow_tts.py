@@ -8,6 +8,7 @@ from TTS.tts.layers.glow_tts.decoder import Decoder
 from TTS.tts.utils.generic_utils import sequence_mask
 from TTS.tts.layers.glow_tts.monotonic_align import maximum_path, generate_path
 
+from TTS.tts.layers.gst_layers import GST
 
 class GlowTts(nn.Module):
     """Glow TTS models from https://arxiv.org/abs/2005.11129"""
@@ -38,7 +39,12 @@ class GlowTts(nn.Module):
                  hidden_channels_dec=None,
                  use_encoder_prenet=False,
                  encoder_type="transformer",
-                 external_speaker_embedding_dim=None):
+                 external_speaker_embedding_dim=None,
+                 gst=False,
+                 gst_embedding_dim=512,
+                 gst_num_heads=4,
+                 gst_style_tokens=10,
+                 gst_use_speaker_embedding=False):
 
         super().__init__()
         self.num_chars = num_chars
@@ -69,6 +75,11 @@ class GlowTts(nn.Module):
         self.noise_scale = 0.66
         self.length_scale = 1.
         self.external_speaker_embedding_dim = external_speaker_embedding_dim
+        self.gst = gst
+        self.gst_embedding_dim = gst_embedding_dim
+        self.gst_num_heads = gst_num_heads
+        self.gst_style_tokens = gst_style_tokens
+        self.gst_use_speaker_embedding = gst_use_speaker_embedding
 
         # if is a multispeaker and c_in_channels is 0, set to 256
         if num_speakers > 1:
@@ -90,7 +101,6 @@ class GlowTts(nn.Module):
                                mean_only=mean_only,
                                use_prenet=use_encoder_prenet,
                                c_in_channels=self.c_in_channels)
-
         self.decoder = Decoder(out_channels,
                                hidden_channels_dec or hidden_channels,
                                kernel_size_dec,
@@ -101,11 +111,18 @@ class GlowTts(nn.Module):
                                num_splits=num_splits,
                                num_sqz=num_sqz,
                                sigmoid_scale=sigmoid_scale,
-                               c_in_channels=self.c_in_channels)
+                               c_in_channels=self.c_in_channels+self.gst_embedding_dim if self.gst else self.c_in_channels)
 
         if num_speakers > 1 and not external_speaker_embedding_dim:
             self.emb_g = nn.Embedding(num_speakers, self.c_in_channels)
             nn.init.uniform_(self.emb_g.weight, -0.1, 0.1)
+
+        if self.gst:
+            self.gst_layer = GST(num_mel=80,
+                                 num_heads=self.gst_num_heads,
+                                 num_style_tokens=self.gst_style_tokens,
+                                 gst_embedding_dim=self.gst_embedding_dim,
+                                 speaker_embedding_dim=self.c_in_channels if self.gst_use_speaker_embedding else None)
 
     @staticmethod
     def compute_outputs(attn, o_mean, o_log_scale, x_mask):
@@ -119,6 +136,31 @@ class GlowTts(nn.Module):
         # compute total duration with adjustment
         o_attn_dur = torch.log(1 + torch.sum(attn, -1)) * x_mask
         return y_mean, y_log_scale, o_attn_dur
+
+    def compute_gst(self, inputs, style_input, speaker_embedding=None):
+        """ Compute global style token """
+        device = inputs.device
+        if isinstance(style_input, dict):
+            query = torch.zeros(1, 1, self.gst_embedding_dim//2).to(device)
+            if speaker_embedding is not None:
+                query = torch.cat([query, speaker_embedding.reshape(1, 1, -1)], dim=-1)
+
+            _GST = torch.tanh(self.gst_layer.style_token_layer.style_tokens)
+            gst_outputs = torch.zeros(1, 1, self.gst_embedding_dim).to(device)
+            for k_token, v_amplifier in style_input.items():
+                key = _GST[int(k_token)].unsqueeze(0).expand(1, -1, -1)
+                gst_outputs_att = self.gst_layer.style_token_layer.attention(query, key)
+                gst_outputs = gst_outputs + gst_outputs_att * v_amplifier
+        elif style_input is None:
+            gst_outputs = torch.zeros(1, 1, self.gst_embedding_dim).to(device)
+        else:
+            if speaker_embedding is not None:
+                speaker_embedding = speaker_embedding.squeeze(-1)
+            gst_outputs = self.gst_layer(style_input.transpose(1, 2), speaker_embedding) # pylint: disable=not-callable
+        inputs = inputs.transpose(1,2)
+        gst_outputs_ = gst_outputs.expand(inputs.size(0), inputs.size(1), -1)
+        inputs = torch.cat([inputs, gst_outputs_], dim=-1)
+        return inputs.transpose(1,2)
 
     def forward(self, x, x_lengths, y=None, y_lengths=None, attn=None, g=None):
         """
@@ -135,11 +177,16 @@ class GlowTts(nn.Module):
                 g = F.normalize(g).unsqueeze(-1)
             else:
                 g = F.normalize(self.emb_g(g)).unsqueeze(-1)# [b, h]
-
         # embedding pass
         o_mean, o_log_scale, o_dur_log, x_mask = self.encoder(x,
                                                               x_lengths,
                                                               g=g)
+
+        # GST
+        if self.gst:
+            # concate speaker embedding and GST style embedding
+            g = self.compute_gst(g, y, g if self.gst_use_speaker_embedding else None)
+
         # format feature vectors and feature vector lenghts
         y, y_lengths, y_max_length, attn = self.preprocess(
             y, y_lengths, y_max_length, None)
@@ -189,9 +236,16 @@ class GlowTts(nn.Module):
         o_mean, o_log_scale, o_dur_log, x_mask = self.encoder(x,
                                                               x_lengths,
                                                               g=g)
+
+        # GST
+        if self.gst:
+            # concate speaker embedding and GST style embedding
+            g = self.compute_gst(g, y, g if self.gst_use_speaker_embedding else None)
+
         # format feature vectors and feature vector lenghts
         y, y_lengths, y_max_length, attn = self.preprocess(
             y, y_lengths, y_max_length, None)
+
         # create masks
         y_mask = torch.unsqueeze(sequence_mask(y_lengths, y_max_length),
                                  1).to(x_mask.dtype)
@@ -224,7 +278,7 @@ class GlowTts(nn.Module):
         return y, logdet, y_mean, y_log_scale, attn, o_dur_log, o_attn_dur
 
     @torch.no_grad()
-    def inference(self, x, x_lengths, g=None):
+    def inference(self, x, x_lengths, g=None, style_mel=None):
 
         if g is not None:
             if self.external_speaker_embedding_dim:
@@ -236,6 +290,11 @@ class GlowTts(nn.Module):
         o_mean, o_log_scale, o_dur_log, x_mask = self.encoder(x,
                                                               x_lengths,
                                                               g=g)
+        # GST
+        if self.gst:
+            # concate speaker embedding and GST style embedding
+            g = self.compute_gst(g, style_mel, g if self.gst_use_speaker_embedding else None)
+
         # compute output durations
         w = (torch.exp(o_dur_log) - 1) * x_mask * self.length_scale
         w_ceil = torch.ceil(w)

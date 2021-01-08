@@ -227,8 +227,12 @@ def infer(model, data_loader, speaker_mapping=None, dir_out=None, metada_name='m
             mel = mel[:mel_length, :].detach().cpu().numpy()
 
             if dir_out is not None:
-                file_name, _ = os.path.splitext(wav_file_names[idx])
+                
+                file_name, _ = os.path.splitext(os.path.basename(wav_file_names[idx]))
                 metadata.append(file_name+'| ')
+                print(dir_out)
+                print(file_name)
+                print("salvando em ", os.path.join(dir_out, file_name+'.npy'))
                 np.save(os.path.join(dir_out, file_name+'.npy'), mel)
                 
                 if debug:
@@ -270,7 +274,7 @@ def main(args):  # pylint: disable=redefined-outer-name
         preprocessor = getattr(preprocessor, name.lower())
         meta_data_eval = []
         meta_data_train = preprocessor(root_path, meta_file_train)
-        if meta_data_eval is not None:
+        if meta_file_val is not None:
             meta_data_eval = preprocessor(root_path, meta_file_val)
         
         meta_data += meta_data_train
