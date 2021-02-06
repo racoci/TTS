@@ -507,7 +507,7 @@ def main(args):  # pylint: disable=redefined-outer-name
 
     # parse speakers
     num_speakers, speaker_embedding_dim, speaker_mapping = parse_speakers(c, args, meta_data_train, OUT_PATH)
-
+    # print(speaker_mapping.keys())
     # setup model
     model = setup_model(num_chars, num_speakers, c, speaker_embedding_dim=speaker_embedding_dim)
     optimizer = RAdam(model.parameters(), lr=c.lr, weight_decay=0, betas=(0.9, 0.98), eps=1e-9)

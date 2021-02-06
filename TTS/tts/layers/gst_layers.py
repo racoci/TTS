@@ -76,8 +76,7 @@ class ReferenceEncoder(nn.Module):
         #               num_channels*post_conv_height]
         self.recurrence.flatten_parameters()
         memory, out = self.recurrence(x)
-        # out: 3D tensor [seq_len==1, batch_size, encoding_size=128]
-
+        # out: 3D tensor [seq_len==1, batch_size, encoding_size=embedding_dim//2]
         return out.squeeze(0)
 
     @staticmethod

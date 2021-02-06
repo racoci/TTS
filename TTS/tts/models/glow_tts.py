@@ -8,7 +8,7 @@ from TTS.tts.layers.glow_tts.decoder import Decoder
 from TTS.tts.utils.generic_utils import sequence_mask
 from TTS.tts.layers.glow_tts.monotonic_align import maximum_path, generate_path
 
-from TTS.tts.layers.gst_layers import GST
+from TTS.tts.layers.gst_layers import ReferenceEncoder
 
 class GlowTts(nn.Module):
     """Glow TTS models from https://arxiv.org/abs/2005.11129"""
@@ -118,11 +118,8 @@ class GlowTts(nn.Module):
             nn.init.uniform_(self.emb_g.weight, -0.1, 0.1)
 
         if self.gst:
-            self.gst_layer = GST(num_mel=80,
-                                 num_heads=self.gst_num_heads,
-                                 num_style_tokens=self.gst_style_tokens,
-                                 gst_embedding_dim=self.gst_embedding_dim,
-                                 speaker_embedding_dim=self.c_in_channels if self.gst_use_speaker_embedding else None)
+            self.style_layer = ReferenceEncoder(num_mel=80,
+                                 embedding_dim=self.gst_embedding_dim*2) # *2 because in gst reference encoder embedding_dim/2 and in glowTTS we dont like this
 
     @staticmethod
     def compute_outputs(attn, o_mean, o_log_scale, x_mask):
@@ -137,28 +134,20 @@ class GlowTts(nn.Module):
         o_attn_dur = torch.log(1 + torch.sum(attn, -1)) * x_mask
         return y_mean, y_log_scale, o_attn_dur
 
-    def compute_gst(self, inputs, style_input, speaker_embedding=None):
+    def compute_gst(self, inputs, style_input, speaker_embedding=None, normalize=True):
         """ Compute global style token """
         device = inputs.device
-        if isinstance(style_input, dict):
-            query = torch.zeros(1, 1, self.gst_embedding_dim//2).to(device)
-            if speaker_embedding is not None:
-                query = torch.cat([query, speaker_embedding.reshape(1, 1, -1)], dim=-1)
-
-            _GST = torch.tanh(self.gst_layer.style_token_layer.style_tokens)
-            gst_outputs = torch.zeros(1, 1, self.gst_embedding_dim).to(device)
-            for k_token, v_amplifier in style_input.items():
-                key = _GST[int(k_token)].unsqueeze(0).expand(1, -1, -1)
-                gst_outputs_att = self.gst_layer.style_token_layer.attention(query, key)
-                gst_outputs = gst_outputs + gst_outputs_att * v_amplifier
-        elif style_input is None:
-            gst_outputs = torch.zeros(1, 1, self.gst_embedding_dim).to(device)
+        if isinstance(style_input, dict) or style_input is None:
+            # use random style reference
+            gst_outputs = torch.normal(mean=0.0, std=torch.arange(0.0, self.gst_embedding_dim)).unsqueeze(0).unsqueeze(0).to(device)
+            # gst_outputs = torch.zeros(1, 1, self.gst_embedding_dim).to(device)
         else:
-            if speaker_embedding is not None:
-                speaker_embedding = speaker_embedding.squeeze(-1)
-            gst_outputs = self.gst_layer(style_input.transpose(1, 2), speaker_embedding) # pylint: disable=not-callable
+            gst_outputs = self.style_layer(style_input.transpose(1, 2)).unsqueeze(1) # pylint: disable=not-callable
         inputs = inputs.transpose(1,2)
         gst_outputs_ = gst_outputs.expand(inputs.size(0), inputs.size(1), -1)
+        if normalize:
+            gst_outputs_ = F.normalize(gst_outputs_)
+
         inputs = torch.cat([inputs, gst_outputs_], dim=-1)
         return inputs.transpose(1,2)
 
