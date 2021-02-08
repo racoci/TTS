@@ -205,12 +205,12 @@ def train(model, data_loader, criterion, optimizer, scheduler,
         optimizer.zero_grad()
 
         # forward pass model
-        z, logdet, y_mean, y_log_scale, alignments, o_dur_log, o_total_dur = model.forward(
+        z, logdet, y_mean, y_log_scale, alignments, o_dur_log, o_total_dur, mu, logvar = model.forward(
             text_input, text_lengths, mel_input, mel_lengths, attn_mask, g=speaker_ids)
 
         # compute loss
         loss_dict = criterion(z, y_mean, y_log_scale, logdet, mel_lengths,
-                              o_dur_log, o_total_dur, text_lengths)
+                              o_dur_log, o_total_dur, text_lengths, mu, logvar, global_step)
 
         # backward pass
         if amp is not None:
@@ -342,12 +342,12 @@ def evaluate(model, data_loader, criterion, ap, global_step, epoch, speaker_mapp
                 _, _, attn_mask = format_data(data, speaker_mapping=speaker_mapping)
 
             # forward pass model
-            z, logdet, y_mean, y_log_scale, alignments, o_dur_log, o_total_dur = model.forward(
+            z, logdet, y_mean, y_log_scale, alignments, o_dur_log, o_total_dur, mu, logvar = model.forward(
                 text_input, text_lengths, mel_input, mel_lengths, attn_mask, g=speaker_ids)
 
             # compute loss
             loss_dict = criterion(z, y_mean, y_log_scale, logdet, mel_lengths,
-                                  o_dur_log, o_total_dur, text_lengths)
+                                  o_dur_log, o_total_dur, text_lengths, mu, logvar, global_step)
 
             # step time
             step_time = time.time() - start_time
@@ -511,7 +511,7 @@ def main(args):  # pylint: disable=redefined-outer-name
     # setup model
     model = setup_model(num_chars, num_speakers, c, speaker_embedding_dim=speaker_embedding_dim)
     optimizer = RAdam(model.parameters(), lr=c.lr, weight_decay=0, betas=(0.9, 0.98), eps=1e-9)
-    criterion = GlowTTSLoss()
+    criterion = GlowTTSLoss(use_vae=getattr(c, "use_vae", False))
 
     if c.apex_amp_level:
         # pylint: disable=import-outside-toplevel

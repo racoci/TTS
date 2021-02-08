@@ -286,14 +286,20 @@ class TacotronLoss(torch.nn.Module):
         return_dict['loss'] = loss
         return return_dict
 
+def kl_anneal(global_step, lag=50000, k=0.0025, x0=10000, upp=0.2):
+    """
+    Util for stabilize the training. It's K Lannealing as in https://arxiv.org/abs/2005.11129
+    """
+    return float(upp / (upp + np.exp(-k * (global_step - x0))))
 
 class GlowTTSLoss(torch.nn.Module):
-    def __init__(self):
+    def __init__(self, use_vae=False):
         super().__init__()
+        self.use_vae = use_vae
         self.constant_factor = 0.5 * math.log(2 * math.pi)
 
     def forward(self, z, means, scales, log_det, y_lengths, o_dur_log,
-                o_attn_dur, x_lengths):
+                o_attn_dur, x_lengths, mu=None, logvar=None, global_step=None):
         return_dict = {}
 
         # flow loss - neg log likelihood
@@ -306,7 +312,16 @@ class GlowTTSLoss(torch.nn.Module):
         # duration loss - huber loss
         loss_dur = torch.nn.functional.smooth_l1_loss(
             o_dur_log, o_attn_dur, reduction='sum') / torch.sum(x_lengths)
+
         return_dict['loss'] = log_mle + loss_dur
         return_dict['log_mle'] = log_mle
         return_dict['loss_dur'] = loss_dur
+
+        if self.use_vae:
+            kl_loss = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
+            kl_weight = kl_anneal(global_step)
+            return_dict['loss'] += (kl_loss * kl_weight)
+            return_dict['kl_loss'] = kl_loss
+            return_dict['kl_weight'] = kl_weight
+
         return return_dict

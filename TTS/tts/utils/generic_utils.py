@@ -127,11 +127,10 @@ def setup_model(num_chars, num_speakers, c, speaker_embedding_dim=None):
                         hidden_channels_dec=192,
                         use_encoder_prenet=True,
                         external_speaker_embedding_dim=speaker_embedding_dim,
-                        gst=getattr(c, "use_gst", False),
-                        gst_embedding_dim=c.gst['gst_embedding_dim'] if getattr(c, "use_gst", False) else None,
-                        gst_num_heads=c.gst['gst_num_heads'] if getattr(c, "use_gst", False) else None,
-                        gst_style_tokens=c.gst['gst_style_tokens'] if getattr(c, "use_gst", False) else None,
-                        gst_use_speaker_embedding=c.gst['gst_use_speaker_embedding'] if getattr(c, "use_gst", False) else None)
+                        use_vae=getattr(c, "use_vae", False),
+                        vae_z_dim=getattr(c, "vae_z_dim", 32),
+                        vae_gru_size=getattr(c, "vae_gru_size", 256),
+                        vae_expand_z=getattr(c, "vae_expand_z", False))
     return model
 
 def is_tacotron(c):

@@ -10,6 +10,37 @@ from TTS.tts.layers.glow_tts.monotonic_align import maximum_path, generate_path
 
 from TTS.tts.layers.gst_layers import ReferenceEncoder
 
+class VAE(nn.Module):
+    ''' VAE from: https://arxiv.org/abs/1812.04342'''
+    def __init__(self, z_size=32, gru_size=256, expand_z=False):
+        super().__init__()
+
+        self.expand_z = expand_z
+        self.style_layer = ReferenceEncoder(num_mel=80, embedding_dim=gru_size*2)
+        self.dense_vari = nn.Linear(gru_size, z_size)
+        self.dense_mean = nn.Linear(gru_size, z_size)
+        if self.expand_z:
+            self.emb_layer = nn.Linear(z_size, gru_size)
+
+    def forward(self, reference_specs):
+        style_out = self.style_layer(reference_specs)
+        mu = self.dense_mean(style_out)
+        logvar = self.dense_vari(style_out)
+        # compute z
+        if self.training:
+            std = torch.exp(0.5 * logvar)
+            eps = torch.randn_like(std)
+            z = mu + eps * std
+        else:
+            z = mu
+        # use a dense layer for expand z latent dim
+        if self.expand_z:
+            style_embedding = self.emb_layer(z)
+        else:
+            style_embedding = z
+
+        return style_embedding, mu, logvar, z
+
 class GlowTts(nn.Module):
     """Glow TTS models from https://arxiv.org/abs/2005.11129"""
     def __init__(self,
@@ -40,11 +71,10 @@ class GlowTts(nn.Module):
                  use_encoder_prenet=False,
                  encoder_type="transformer",
                  external_speaker_embedding_dim=None,
-                 gst=False,
-                 gst_embedding_dim=512,
-                 gst_num_heads=4,
-                 gst_style_tokens=10,
-                 gst_use_speaker_embedding=False):
+                 use_vae=False,
+                 vae_z_dim=32,
+                 vae_gru_size=256,
+                 vae_expand_z=False):
 
         super().__init__()
         self.num_chars = num_chars
@@ -75,11 +105,12 @@ class GlowTts(nn.Module):
         self.noise_scale = 0.66
         self.length_scale = 1.
         self.external_speaker_embedding_dim = external_speaker_embedding_dim
-        self.gst = gst
-        self.gst_embedding_dim = gst_embedding_dim
-        self.gst_num_heads = gst_num_heads
-        self.gst_style_tokens = gst_style_tokens
-        self.gst_use_speaker_embedding = gst_use_speaker_embedding
+        # VAE params
+        self.use_vae = use_vae,
+        self.vae_z_dim = vae_z_dim
+        self.vae_gru_size = vae_gru_size
+        self.vae_expand_z = vae_expand_z
+        self.vae_out_embedding_size = self.vae_gru_size if self.vae_expand_z else self.vae_z_dim
 
         # if is a multispeaker and c_in_channels is 0, set to 256
         if num_speakers > 1:
@@ -111,15 +142,15 @@ class GlowTts(nn.Module):
                                num_splits=num_splits,
                                num_sqz=num_sqz,
                                sigmoid_scale=sigmoid_scale,
-                               c_in_channels=self.c_in_channels+self.gst_embedding_dim if self.gst else self.c_in_channels)
+                               c_in_channels=self.c_in_channels+self.vae_out_embedding_size if self.use_vae else self.c_in_channels)
 
         if num_speakers > 1 and not external_speaker_embedding_dim:
             self.emb_g = nn.Embedding(num_speakers, self.c_in_channels)
             nn.init.uniform_(self.emb_g.weight, -0.1, 0.1)
 
-        if self.gst:
-            self.style_layer = ReferenceEncoder(num_mel=80,
-                                 embedding_dim=self.gst_embedding_dim*2) # *2 because in gst reference encoder embedding_dim/2 and in glowTTS we dont like this
+        if self.use_vae:
+            self.VAE = VAE(z_size=self.vae_z_dim, gru_size=self.vae_gru_size, expand_z=self.vae_expand_z)
+            
 
     @staticmethod
     def compute_outputs(attn, o_mean, o_log_scale, x_mask):
@@ -133,23 +164,26 @@ class GlowTts(nn.Module):
         # compute total duration with adjustment
         o_attn_dur = torch.log(1 + torch.sum(attn, -1)) * x_mask
         return y_mean, y_log_scale, o_attn_dur
-
-    def compute_gst(self, inputs, style_input, speaker_embedding=None, normalize=True):
-        """ Compute global style token """
-        device = inputs.device
-        if isinstance(style_input, dict) or style_input is None:
-            # use random style reference
-            gst_outputs = torch.normal(mean=0.0, std=torch.arange(0.0, self.gst_embedding_dim)).unsqueeze(0).unsqueeze(0).to(device)
-            # gst_outputs = torch.zeros(1, 1, self.gst_embedding_dim).to(device)
+    
+    def compute_vae(self, speaker_embedding, style_input):
+        """ Compute VAE"""
+        device = speaker_embedding.device
+        if isinstance(style_input, dict) or style_input is None and not self.training:
+            # if reference is not provide, generate a random z
+            mu = -1
+            logvar = -1
+            ref_tensor = torch.zeros((style_input.size(0), self.vae_out_embedding_size))
+            z = torch.randn_like(ref_tensor).to(device)
+            # expand z
+            if self.vae_expand_z:
+                style_embedding = self.VAE.emb_layer(z)
+            else:
+                style_embedding = z
         else:
-            gst_outputs = self.style_layer(style_input.transpose(1, 2)).unsqueeze(1) # pylint: disable=not-callable
-        inputs = inputs.transpose(1,2)
-        gst_outputs_ = gst_outputs.expand(inputs.size(0), inputs.size(1), -1)
-        if normalize:
-            gst_outputs_ = F.normalize(gst_outputs_)
+            style_embedding, mu, logvar, z = self.VAE(style_input.transpose(1, 2)) # pylint: disable=not-callable
 
-        inputs = torch.cat([inputs, gst_outputs_], dim=-1)
-        return inputs.transpose(1,2)
+        outputs = torch.cat([speaker_embedding, style_embedding.unsqueeze(-1)], dim=-2)
+        return outputs, mu, logvar, z
 
     def forward(self, x, x_lengths, y=None, y_lengths=None, attn=None, g=None):
         """
@@ -171,10 +205,13 @@ class GlowTts(nn.Module):
                                                               x_lengths,
                                                               g=g)
 
-        # GST
-        if self.gst:
-            # concate speaker embedding and GST style embedding
-            g = self.compute_gst(g, y, g if self.gst_use_speaker_embedding else None)
+        # VAE
+        if self.use_vae:
+            # concate speaker embedding with VAE embedding
+            g, mu, logvar, _ = self.compute_vae(g, y)
+        else:
+            mu = None
+            logvar = None
 
         # format feature vectors and feature vector lenghts
         y, y_lengths, y_max_length, attn = self.preprocess(
@@ -185,6 +222,7 @@ class GlowTts(nn.Module):
         attn_mask = torch.unsqueeze(x_mask, -1) * torch.unsqueeze(y_mask, 2)
         # decoder pass
         z, logdet = self.decoder(y, y_mask, g=g, reverse=False)
+
         # find the alignment path
         with torch.no_grad():
             o_scale = torch.exp(-2 * o_log_scale)
@@ -202,7 +240,7 @@ class GlowTts(nn.Module):
         y_mean, y_log_scale, o_attn_dur = self.compute_outputs(
             attn, o_mean, o_log_scale, x_mask)
         attn = attn.squeeze(1).permute(0, 2, 1)
-        return z, logdet, y_mean, y_log_scale, attn, o_dur_log, o_attn_dur
+        return z, logdet, y_mean, y_log_scale, attn, o_dur_log, o_attn_dur, mu, logvar
 
     @torch.no_grad()
     def inference_with_lenghts(self, x, x_lengths, y=None, y_lengths=None, attn=None, g=None):
@@ -226,10 +264,10 @@ class GlowTts(nn.Module):
                                                               x_lengths,
                                                               g=g)
 
-        # GST
-        if self.gst:
-            # concate speaker embedding and GST style embedding
-            g = self.compute_gst(g, y, g if self.gst_use_speaker_embedding else None)
+        # VAE
+        if self.use_vae:
+            # concate speaker embedding with VAE embedding
+            g, _, _, _ = self.compute_vae(g, y)
 
         # format feature vectors and feature vector lenghts
         y, y_lengths, y_max_length, attn = self.preprocess(
@@ -279,10 +317,10 @@ class GlowTts(nn.Module):
         o_mean, o_log_scale, o_dur_log, x_mask = self.encoder(x,
                                                               x_lengths,
                                                               g=g)
-        # GST
-        if self.gst:
-            # concate speaker embedding and GST style embedding
-            g = self.compute_gst(g, style_mel, g if self.gst_use_speaker_embedding else None)
+        # VAE
+        if self.use_vae:
+            # concate speaker embedding with VAE embedding
+            g, _, _, _ = self.compute_vae(g, style_mel)
 
         # compute output durations
         w = (torch.exp(o_dur_log) - 1) * x_mask * self.length_scale
