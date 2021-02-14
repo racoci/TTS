@@ -292,7 +292,7 @@ def train(model, data_loader, criterion, optimizer, scheduler,
 
                 # Diagnostic visualizations
                 # direct pass on model for spec predictions
-                spec_pred, *_ = model.inference(text_input[:1], text_lengths[:1], g=speaker_ids[:1])
+                spec_pred, *_ = model.inference(text_input[:1], text_lengths[:1], g=speaker_ids[:1], style_mel=mel_input[:1])
                 spec_pred = spec_pred.permute(0, 2, 1)
                 gt_spec = mel_input.permute(0, 2, 1)
                 const_spec = spec_pred[0].data.cpu().numpy()
@@ -329,6 +329,7 @@ def train(model, data_loader, criterion, optimizer, scheduler,
 
 @torch.no_grad()
 def evaluate(model, data_loader, criterion, ap, global_step, epoch, speaker_mapping):
+    print("evaluate")
     model.eval()
     epoch_time = 0
     keep_avg = KeepAverage()
@@ -580,7 +581,7 @@ def main(args):  # pylint: disable=redefined-outer-name
                                verbose=True, speaker_mapping=speaker_mapping)
     eval_data_loader = setup_loader(ap, 1, is_val=True, speaker_mapping=speaker_mapping)
 
-    for epoch in range(0, c.epochs):
+    for epoch in range(0, c.epochs):        
         c_logger.print_epoch_start(epoch, c.epochs)
         train_avg_loss_dict, global_step = train(model, train_data_loader, criterion, optimizer,
                                                  scheduler, ap, global_step,

@@ -168,11 +168,11 @@ class GlowTts(nn.Module):
     def compute_vae(self, speaker_embedding, style_input):
         """ Compute VAE"""
         device = speaker_embedding.device
-        if isinstance(style_input, dict) or style_input is None and not self.training:
+        if (isinstance(style_input, dict) or style_input is None) and not self.training:
             # if reference is not provide, generate a random z
             mu = -1
             logvar = -1
-            ref_tensor = torch.zeros((style_input.size(0), self.vae_out_embedding_size))
+            ref_tensor = torch.zeros((speaker_embedding.size(0), self.vae_z_dim))
             z = torch.randn_like(ref_tensor).to(device)
             # expand z
             if self.vae_expand_z:
