@@ -232,7 +232,7 @@ def infer(model, data_loader, speaker_mapping=None, dir_out=None, metada_name='m
                 metadata.append(file_name+'| ')
                 print(dir_out)
                 print(file_name)
-                print("salvando em ", os.path.join(dir_out, file_name+'.npy'))
+                print("saved in ", os.path.join(dir_out, file_name+'.npy'))
                 np.save(os.path.join(dir_out, file_name+'.npy'), mel)
                 
                 if debug:

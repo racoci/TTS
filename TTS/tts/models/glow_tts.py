@@ -131,7 +131,7 @@ class GlowTts(nn.Module):
                                dropout_p=dropout_p,
                                mean_only=mean_only,
                                use_prenet=use_encoder_prenet,
-                               c_in_channels=self.c_in_channels)
+                               c_in_channels=self.c_in_channels+self.vae_out_embedding_size if self.use_vae else self.c_in_channels)
         self.decoder = Decoder(out_channels,
                                hidden_channels_dec or hidden_channels,
                                kernel_size_dec,
@@ -200,10 +200,6 @@ class GlowTts(nn.Module):
                 g = F.normalize(g).unsqueeze(-1)
             else:
                 g = F.normalize(self.emb_g(g)).unsqueeze(-1)# [b, h]
-        # embedding pass
-        o_mean, o_log_scale, o_dur_log, x_mask = self.encoder(x,
-                                                              x_lengths,
-                                                              g=g)
 
         # VAE
         if self.use_vae:
@@ -212,6 +208,11 @@ class GlowTts(nn.Module):
         else:
             mu = None
             logvar = None
+
+        # embedding pass
+        o_mean, o_log_scale, o_dur_log, x_mask = self.encoder(x,
+                                                              x_lengths,
+                                                              g=g)
 
         # format feature vectors and feature vector lenghts
         y, y_lengths, y_max_length, attn = self.preprocess(
@@ -259,15 +260,15 @@ class GlowTts(nn.Module):
             else:
                 g = F.normalize(self.emb_g(g)).unsqueeze(-1)# [b, h]
 
-        # embedding pass
-        o_mean, o_log_scale, o_dur_log, x_mask = self.encoder(x,
-                                                              x_lengths,
-                                                              g=g)
-
         # VAE
         if self.use_vae:
             # concate speaker embedding with VAE embedding
             g, _, _, _ = self.compute_vae(g, y)
+
+        # embedding pass
+        o_mean, o_log_scale, o_dur_log, x_mask = self.encoder(x,
+                                                              x_lengths,
+                                                              g=g)
 
         # format feature vectors and feature vector lenghts
         y, y_lengths, y_max_length, attn = self.preprocess(
@@ -313,14 +314,15 @@ class GlowTts(nn.Module):
             else:
                 g = F.normalize(self.emb_g(g)).unsqueeze(-1)  # [b, h]
 
-        # embedding pass
-        o_mean, o_log_scale, o_dur_log, x_mask = self.encoder(x,
-                                                              x_lengths,
-                                                              g=g)
         # VAE
         if self.use_vae:
             # concate speaker embedding with VAE embedding
             g, _, _, _ = self.compute_vae(g, style_mel)
+
+        # embedding pass
+        o_mean, o_log_scale, o_dur_log, x_mask = self.encoder(x,
+                                                              x_lengths,
+                                                              g=g)
 
         # compute output durations
         w = (torch.exp(o_dur_log) - 1) * x_mask * self.length_scale
