@@ -177,7 +177,7 @@ class AudioProcessor(object):
 
     def _griffin_lim(self, S):
         angles = np.exp(2j * np.pi * np.random.rand(*S.shape))
-        S_complex = np.abs(S).astype(np.complex)
+        S_complex = np.abs(S).astype(np.complex128)
         y = self._istft(S_complex * angles)
         for i in range(self.griffin_lim_iters):
             angles = np.exp(1j * np.angle(self._stft(y)))
